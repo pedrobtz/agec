@@ -22,7 +22,7 @@ cage-keygen: $(OBJ_KEYGEN)
 	$(CC) $(CFLAGS) -c $< -o $@
 
 base64.o:	base64.h util.h
-bech32.o:	bech32.h
+bech32.o:	bech32.h common.h
 cage.o:		base64.h common.h header.h scrypt.h x25519.h io.h payload.h \
 		parse.h
 header.o:	header.h base64.h common.h

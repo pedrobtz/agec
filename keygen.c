@@ -5,8 +5,8 @@
 #include <unistd.h>
 #include <openssl/curve25519.h>
 
-#include "bech32.h"
 #include "common.h"
+#include "bech32.h"
 #include "util.h"
 
 char *argv0;
@@ -47,17 +47,25 @@ upper(char *s)
 static void
 print(Keypair kp)
 {
-	char pub[63];
-	char priv[75];
+	uchar pub[63];
+	uchar priv[75];
+	int ok;
 
-	bech32_encode(pub, "age", (uint8_t *)kp.pub, X25519_KEY_LENGTH);
-	bech32_encode(priv, "age-secret-key-", (uint8_t *)kp.priv,
-		X25519_KEY_LENGTH);
+	ok = bech32encode("age", kp.pub, X25519_KEY_LENGTH, pub);
+	if(!ok)
+		goto fail;
+	ok = bech32encode("age-secret-key-", kp.priv, X25519_KEY_LENGTH, priv);
+	if(!ok)
+		goto fail;
 	if(!isatty(1))
 		fprintf(stderr, "Public key: %s\n", pub);
 	printf("# public key: %s\n", pub);
-	puts(upper(priv));
+	puts(upper((char *)priv));
 	explicit_bzero(priv, sizeof priv);
+	return;
+fail:
+	fprintf(stderr, "failed to encode key");
+	exit(1);
 }
 
 int

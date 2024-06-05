@@ -18,10 +18,8 @@
 #define HDRINITLEN  128
 #define BECHPUBLEN  62
 #define BECHPRIVLEN 74
-#define BECH5BITLEN 52
 #define TAGLEN      16      /* poly1305 authentication tag */
 
-static void pack5bit(uchar in[BECH5BITLEN], uchar out[32]);
 static void wrap(uchar out[32], uchar share[32], uchar secret[32], uchar pubkey[32]);
 static Data body(uchar share[32], uchar esecret[32], uchar pubkey[32], Data filekey);
 static void pub(uchar out[32], uchar priv[32]);
@@ -91,61 +89,41 @@ wrap(uchar out[32], uchar share[32], uchar secret[32], uchar pubkey[32])
 int
 x25519pubkey(char *bech, uchar pubkey[32])
 {
-	char hrp[BECHPUBLEN - 6];
 	uchar data[BECHPUBLEN - 8];
-	size_t datalen;
-	bech32_encoding r;
+	size_t datalen, hrplen;
+	int ok;
 
 	if(strlen(bech) != BECHPUBLEN)
 		return 0;
-	r = bech32_decode(hrp, data, &datalen, bech);
-	if(r != BECH32_ENCODING_BECH32)
+	ok = bech32decode(bech, data, &datalen, &hrplen);
+	if(!ok)
 		return 0;
-	if(datalen != BECH5BITLEN)
+	if(datalen != 32)
 		return 0;
-	pack5bit(data, pubkey);
+	memcpy(pubkey, data, 32);
 	return 1;
 }
 
 int
 x25519privkey(char bech[74+1], uchar privkey[32])
 {
-	static const char goodhrp[] = "age-secret-key-";
-	char hrp[BECHPRIVLEN - 6];
+	static const char goodprefix[] = "AGE-SECRET-KEY-1";
 	uchar data[BECHPRIVLEN - 8];
-	size_t datalen;
-	bech32_encoding r;
+	size_t datalen, hrplen;
+	int ok;
 
 	if(strnlen(bech, BECHPRIVLEN) != BECHPRIVLEN)
 		return 0;
 	bech[74] = '\0';
-	r = bech32_decode(hrp, data, &datalen, bech);
-	if(r != BECH32_ENCODING_BECH32)
+	if(memcmp(bech, goodprefix, sizeof(goodprefix) - 1) != 0)
 		return 0;
-	if(datalen != BECH5BITLEN)
+	ok = bech32decode(bech, data, &datalen, &hrplen);
+	if(!ok)
 		return 0;
-	if(memcmp(hrp, goodhrp, sizeof(goodhrp)) != 0)
+	if(datalen != 32)
 		return 0;
-	pack5bit(data, privkey);
+	memcpy(privkey, data, 32);
 	return 1;
-}
-
-static void
-pack5bit(uchar in[BECH5BITLEN], uchar out[32])
-{
-	uint32_t acc = 0;
-	int i, bits = 0;
-
-	for(i = 0; i < BECH5BITLEN; i++) {
-		assert(in[i] < 0x20);
-		acc = (acc << 5) | in[i];
-		bits += 5;
-		while(bits >= 8) {
-			bits -= 8;
-			*out = (acc >> bits) & 0xff;
-			out++;
-		}
-	}
 }
 
 static void

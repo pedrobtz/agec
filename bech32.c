@@ -1,186 +1,243 @@
-/* Copyright (c) 2017, 2021 Pieter Wuille
- *
- * Permission is hereby granted, free of charge, to any person obtaining a copy
- * of this software and associated documentation files (the "Software"), to deal
- * in the Software without restriction, including without limitation the rights
- * to use, copy, modify, merge, publish, distribute, sublicense, and/or sell
- * copies of the Software, and to permit persons to whom the Software is
- * furnished to do so, subject to the following conditions:
- *
- * The above copyright notice and this permission notice shall be included in
- * all copies or substantial portions of the Software.
- *
- * THE SOFTWARE IS PROVIDED "AS IS", WITHOUT WARRANTY OF ANY KIND, EXPRESS OR
- * IMPLIED, INCLUDING BUT NOT LIMITED TO THE WARRANTIES OF MERCHANTABILITY,
- * FITNESS FOR A PARTICULAR PURPOSE AND NONINFRINGEMENT. IN NO EVENT SHALL THE
- * AUTHORS OR COPYRIGHT HOLDERS BE LIABLE FOR ANY CLAIM, DAMAGES OR OTHER
- * LIABILITY, WHETHER IN AN ACTION OF CONTRACT, TORT OR OTHERWISE, ARISING FROM,
- * OUT OF OR IN CONNECTION WITH THE SOFTWARE OR THE USE OR OTHER DEALINGS IN
- * THE SOFTWARE.
+/*
+ * Based on Pascal S. de Kloe's public domain implementation:
+ * https://github.com/pascaldekloe/bech32 (commit 43757af)
  */
-#include <assert.h>
-#include <stdlib.h>
+
+#include <stddef.h>
 #include <stdint.h>
 #include <string.h>
 
+#include "common.h"
 #include "bech32.h"
-#include "util.h"
 
-static uint32_t bech32_polymod_step(uint32_t pre) {
-    uint8_t b = pre >> 25;
-    return ((pre & 0x1FFFFFF) << 5) ^
-        (-((b >> 0) & 1) & 0x3b6a57b2UL) ^
-        (-((b >> 1) & 1) & 0x26508e6dUL) ^
-        (-((b >> 2) & 1) & 0x1ea119faUL) ^
-        (-((b >> 3) & 1) & 0x3d4233ddUL) ^
-        (-((b >> 4) & 1) & 0x2a1462b3UL);
-}
-
-static uint32_t bech32_final_constant(bech32_encoding enc) {
-    if (enc == BECH32_ENCODING_BECH32) return 1;
-    assert(0);
-}
-
-static const char* charset = "qpzry9x8gf2tvdw0s3jn54khce6mua7l";
-
-static const int8_t charset_rev[128] = {
-    -1, -1, -1, -1, -1, -1, -1, -1, -1, -1, -1, -1, -1, -1, -1, -1,
-    -1, -1, -1, -1, -1, -1, -1, -1, -1, -1, -1, -1, -1, -1, -1, -1,
-    -1, -1, -1, -1, -1, -1, -1, -1, -1, -1, -1, -1, -1, -1, -1, -1,
-    15, -1, 10, 17, 21, 20, 26, 30,  7,  5, -1, -1, -1, -1, -1, -1,
-    -1, 29, -1, 24, 13, 25,  9,  8, 23, -1, 18, 22, 31, 27, 19, -1,
-     1,  0,  3, 16, 11, 28, 12, 14,  6,  4,  2, -1, -1, -1, -1, -1,
-    -1, 29, -1, 24, 13, 25,  9,  8, 23, -1, 18, 22, 31, 27, 19, -1,
-     1,  0,  3, 16, 11, 28, 12, 14,  6,  4,  2, -1, -1, -1, -1, -1
+/* Chartab reverses dictionary for parsing. Range [128..255] is removed. */
+static const char chartab[128] = {
+	99, 99, 99, 99, 99, 99, 99, 99, 99, 99, 99, 99, 99, 99, 99, 99,
+	99, 99, 99, 99, 99, 99, 99, 99, 99, 99, 99, 99, 99, 99, 99, 99,
+	99, 99, 99, 99, 99, 99, 99, 99, 99, 99, 99, 99, 99, 99, 99, 99,
+	15, 99, 10, 17, 21, 20, 26, 30,  7,  5, 99, 99, 99, 99, 99, 99,
+	99, 99, 99, 99, 99, 99, 99, 99, 99, 99, 99, 99, 99, 99, 99, 99,
+	99, 99, 99, 99, 99, 99, 99, 99, 99, 99, 99, 99, 99, 99, 99, 99,
+	99, 29, 99, 24, 13, 25,  9,  8, 23, 99, 18, 22, 31, 27, 19, 99,
+	 1,  0,  3, 16, 11, 28, 12, 14,  6,  4,  2, 99, 99, 99, 99, 99,
 };
 
-static int convert_bits(uint8_t* out, size_t* outlen, int outbits, const uint8_t
-* in, size_t inlen, int inbits, int pad) {
-    uint32_t val = 0;
-    int bits = 0;
-    uint32_t maxv = (((uint32_t)1) << outbits) - 1;
-    while (inlen--) {
-        val = (val << inbits) | *(in++);
-        bits += inbits;
-        while (bits >= outbits) {
-            bits -= outbits;
-            out[(*outlen)++] = (val >> bits) & maxv;
-        }
-    }
-    if (pad) {
-        if (bits) {
-            out[(*outlen)++] = (val << (outbits - bits)) & maxv;
-        }
-    } else if (((val << (outbits - bits)) & maxv) || bits >= inbits) {
-        return 0;
-    }
-    return 1;
+/*
+ * Dictionary is the lower-case character set for data encoding,
+ * in which the index of each character represents its respective
+ * numerical (5-bit) value.
+ */
+static const char *dictionary = "qpzry9x8gf2tvdw0s3jn54khce6mua7l";
+
+static size_t prepare(char *s, size_t *last1, int *ok);
+static uint32_t labelcheck(char *s, size_t len, int *ok);
+static uint32_t check5bits(uint32_t code, uint32_t v);
+static int decode(uchar *out, char *s, size_t len, size_t last1, size_t *olen, uint32_t *code);
+static uint32_t checksum(char *s, size_t slen, uint32_t code, int *ok);
+static uint32_t encode(uchar *data, size_t datalen, uint32_t code, uchar *out, size_t *olen);
+static void encodesum(uint32_t code, uchar *out);
+
+int
+bech32decode(char *s, uchar *out, size_t *outlen, size_t *hrplen)
+{
+	size_t slen, last1;
+	uint32_t code;
+	int ok;
+
+	slen = prepare(s, &last1, &ok);
+	if(!ok)
+		return 0;    /* ErrCaseMix */
+	if(slen > 90)
+		return 0;    /* ErrBig */
+	if(last1 <= 0)
+		return 0;    /* errNoLabel */
+	if(slen - last1 < 7)
+		return 0;    /* errNoCksum */
+	code = labelcheck(s, last1, &ok);
+	if(!ok)
+		return 0;    /* errLabelChar */
+	ok = decode(out, s, slen, last1, outlen, &code);
+	if(!ok)
+		return 0;
+	code = checksum(s, slen, code, &ok);
+	if(!ok || code != 1)
+		return 0;    /* recovery not implemented */
+	*hrplen = last1;
+	return 1;
 }
 
-int bech32_encode(char *output, const char *hrp, const uint8_t *data, size_t data_len) {
-    uint32_t chk = 1;
-    size_t i = 0;
-    size_t datalen = 0;
-    uint8_t *convdata;
+static size_t
+prepare(char *s, size_t *last1, int *ok)
+{
+	size_t i;
+	int haslow = 0, hasup = 0;
 
-    while (hrp[i] != 0) {
-        int ch = hrp[i];
-        if (ch < 33 || ch > 126) {
-            return 0;
-        }
-
-        if (ch >= 'A' && ch <= 'Z') return 0;
-        chk = bech32_polymod_step(chk) ^ (ch >> 5);
-        ++i;
-    }
-    convdata = emalloc(data_len * 2);
-    convert_bits(convdata, &datalen, 5, data, data_len, 8, 1);
-    data = convdata;
-    if (i + 7 + datalen > 90) {
-	free(convdata);
-        return 0;
-    }
-    chk = bech32_polymod_step(chk);
-    while (*hrp != 0) {
-        chk = bech32_polymod_step(chk) ^ (*hrp & 0x1f);
-        *(output++) = *(hrp++);
-    }
-    *(output++) = '1';
-    for (i = 0; i < datalen; ++i) {
-        assert(!(*data >> 5));
-        chk = bech32_polymod_step(chk) ^ (*data);
-        *(output++) = charset[*(data++)];
-    }
-    for (i = 0; i < 6; ++i) {
-        chk = bech32_polymod_step(chk);
-    }
-    chk ^= bech32_final_constant(BECH32_ENCODING_BECH32);
-    for (i = 0; i < 6; ++i) {
-        *(output++) = charset[(chk >> ((5 - i) * 5)) & 0x1f];
-    }
-    *output = 0;
-    explicit_bzero(convdata, data_len * 2);
-    free(convdata);
-    return 1;
+	*last1 = -1;
+	for(i = 0; s[i] != '\0'; i++) {
+		if(s[i] >= 'a' && s[i] <= 'z') {
+			haslow = 1;
+		} else if(s[i] >= 'A' && s[i] <= 'Z') {
+			hasup = 1;
+			s[i] += 32;
+		} else if(s[i] == '1') {
+			*last1 = i;
+		}
+	}
+	*ok = !(haslow && hasup);
+	return i;
 }
 
-bech32_encoding bech32_decode(char* hrp, uint8_t *data, size_t *data_len, const char *input) {
-    uint32_t chk = 1;
-    size_t i;
-    size_t input_len = strlen(input);
-    size_t hrp_len;
-    int have_lower = 0, have_upper = 0;
-    if (input_len < 8 || input_len > 90) {
-        return BECH32_ENCODING_NONE;
-    }
-    *data_len = 0;
-    while (*data_len < input_len && input[(input_len - 1) - *data_len] != '1') {
-        ++(*data_len);
-    }
-    hrp_len = input_len - (1 + *data_len);
-    if (1 + *data_len >= input_len || *data_len < 6) {
-        return BECH32_ENCODING_NONE;
-    }
-    *(data_len) -= 6;
-    for (i = 0; i < hrp_len; ++i) {
-        int ch = input[i];
-        if (ch < 33 || ch > 126) {
-            return BECH32_ENCODING_NONE;
-        }
-        if (ch >= 'a' && ch <= 'z') {
-            have_lower = 1;
-        } else if (ch >= 'A' && ch <= 'Z') {
-            have_upper = 1;
-            ch = (ch - 'A') + 'a';
-        }
-        hrp[i] = ch;
-        chk = bech32_polymod_step(chk) ^ (ch >> 5);
-    }
-    hrp[i] = 0;
-    chk = bech32_polymod_step(chk);
-    for (i = 0; i < hrp_len; ++i) {
-        chk = bech32_polymod_step(chk) ^ (input[i] & 0x1f);
-    }
-    ++i;
-    while (i < input_len) {
-        int v = (input[i] & 0x80) ? -1 : charset_rev[(int)input[i]];
-        if (input[i] >= 'a' && input[i] <= 'z') have_lower = 1;
-        if (input[i] >= 'A' && input[i] <= 'Z') have_upper = 1;
-        if (v == -1) {
-            return BECH32_ENCODING_NONE;
-        }
-        chk = bech32_polymod_step(chk) ^ v;
-        if (i + 6 < input_len) {
-            data[i - (1 + hrp_len)] = v;
-        }
-        ++i;
-    }
-    if (have_lower && have_upper) {
-        return BECH32_ENCODING_NONE;
-    }
-    if (chk == bech32_final_constant(BECH32_ENCODING_BECH32)) {
-        return BECH32_ENCODING_BECH32;
-    } else {
-        return BECH32_ENCODING_NONE;
-    }
+static uint32_t
+labelcheck(char *s, size_t len, int *ok)
+{
+	uint32_t code, i;
+
+	code = 1;
+	for(i = 0; i < len; i++) {
+		if(s[i] < 33 || s[i] > 126) {
+			*ok = 0;
+			return 0;
+		}
+		code = check5bits(code, s[i] >> 5);
+		/* least significant bits in next loop */
+	}
+	code = check5bits(code, 0);
+	for(i = 0; i < len; i++)
+		code = check5bits(code, (uint32_t)s[i] & 31);
+	*ok = 1;
+	return code;
+}
+
+/* See the 'Checksum' subsection in BIP 0173. */
+static uint32_t
+check5bits(uint32_t code, uint32_t v)
+{
+	uint32_t b;
+
+	b = code >> 25;
+	code = (code & 0x1ffffff)<<5 ^ v;
+	if(b & 1)
+		code ^= 0x3b6a57b2;
+	if(b & 2)
+		code ^= 0x26508e6d;
+	if(b & 4)
+		code ^= 0x1ea119fa;
+	if(b & 8)
+		code ^= 0x3d4233dd;
+	if(b & 16)
+		code ^= 0x2a1462b3;
+	return code;
+}
+
+static int
+decode(uchar *out, char *s, size_t len, size_t last1, size_t *olen, uint32_t *code)
+{
+	size_t i, o;
+	uint32_t c = *code;
+	uint32_t acc = 0;
+	int bits = 0;
+	char v;
+
+	for(o = 0, i = last1 + 1; i < len - 6; i++) {
+		v = ((uchar)s[i] > 127) ? 99 : chartab[(uchar)s[i]];
+		if(v > 31)
+			return 0;  /* errDataChar */
+		c = check5bits(c, v);
+		acc = (acc << 5) | v;
+		bits += 5;
+		while(bits >= 8) {
+			bits -= 8;
+			out[o++] = (acc >> bits) & 0xff;
+		}
+	}
+	*olen = o;
+	*code = c;
+	return 1;
+}
+
+static uint32_t
+checksum(char *s, size_t slen, uint32_t code, int *ok)
+{
+	size_t i;
+	char v;
+
+	for(i = slen - 6; i < slen; i++) {
+		v = ((uchar)s[i] > 127) ? 99 : chartab[(uchar)s[i]];
+		if(v > 31) {
+			*ok = 0;
+			return 0;
+		}
+		code = check5bits(code, v);
+	}
+	return code;
+}
+
+int
+bech32encode(char *label, uchar *data, size_t datalen, uchar *out)
+{
+	size_t nbits = datalen * 8, l, labellen, olen;
+	uint32_t code;
+	int ok;
+
+	labellen = strlen(label);
+	l = 7 + labellen + (nbits + 4) / 5;
+	if(l > 90)
+		return 0;    /* ErrBig */
+	memcpy(out, label, labellen);
+	out[labellen] = '1';
+	code = labelcheck(label, labellen, &ok);
+	if(!ok)
+		return 0;    /* errLabelChar */
+	code = encode(data, datalen, code, out + labellen + 1, &olen);
+	encodesum(code, out + labellen + 1 + olen);
+	return 1;
+}
+
+static uint32_t
+encode(uchar *data, size_t datalen, uint32_t code, uchar *out, size_t *olen)
+{
+	uchar *start = out;
+	size_t i;
+	uint8_t acc = 0, v;
+	int nbits = 0;
+
+	for(i = 0; i < datalen; i++) {
+		v = acc | (data[i] >> (8 - 5 + nbits));
+		code = check5bits(code, v);
+		*(out++) = dictionary[v];
+		nbits = (8 - 5 + nbits);
+		if(nbits > 5) {
+			v = data[i] << (8 - nbits);
+			v >>= (8 - nbits);
+			v >>= nbits - 5;
+			code = check5bits(code, v);
+			*(out++) = dictionary[v];
+			nbits -= 5;
+		}
+		acc = data[i] << (8 - nbits);
+		acc >>= 3;
+	}
+	if(nbits > 0) {
+		code = check5bits(code, acc);
+		*(out++) = dictionary[acc];
+	}
+	*olen = out - start;
+	return code;
+}
+
+static void
+encodesum(uint32_t code, uchar *out)
+{
+	int i;
+
+	for(i = 0; i < 6; i++)
+		code = check5bits(code, 0);
+	code ^= 1;
+	*(out++) = dictionary[code >> 25 & 31];
+	*(out++) = dictionary[code >> 20 & 31];
+	*(out++) = dictionary[code >> 15 & 31];
+	*(out++) = dictionary[code >> 10 & 31];
+	*(out++) = dictionary[code >>  5 & 31];
+	*(out++) = dictionary[code >>  0 & 31];
+	*out = '\0';
 }
