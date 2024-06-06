@@ -227,6 +227,7 @@ endcheck(uchar *buf, size_t len, int *endpos)
 		while(p < (char *)buf + len) {
 			if(*p == '-')
 				break;
+			p++;
 		}
 		return 0;
 	}
