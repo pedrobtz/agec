@@ -80,7 +80,7 @@ aflush(Obuf *b)
 
 	if(b->cur == 0)
 		return 0;
-	base64_encode(b->abuf, buf, b->cur, &outlen, 1);
+	base64encode(b->abuf, buf, b->cur, &outlen, 1);
 	r = write(b->fd, buf, outlen);
 	b->cur = 0;
 	return r;
@@ -284,7 +284,7 @@ aread(Ibuf *b, void *buf, size_t nbytes)
 			end = endcheck(raw, nr, &b->aendpos);
 			if(end == -1)
 				return -2;
-			ok = base64_decode(raw, b->abuf, nr - b->aendpos,
+			ok = base64decode(raw, b->abuf, nr - b->aendpos,
 					&outlen, 1);
 			if(!ok)
 				return -2;

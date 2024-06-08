@@ -400,7 +400,7 @@ getb64seq(Ibuf *b, uchar *out, uchar *buf, size_t rawlen, char term)
 		if(nr == 0 || c != term)
 			return 0;
 	}
-	ok = base64_decode(buf, out, i, &outlen, 0);
+	ok = base64decode(buf, out, i, &outlen, 0);
 	if(!ok || outlen != rawlen)
 		return 0;
 	return 1;

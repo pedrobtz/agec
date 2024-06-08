@@ -41,11 +41,11 @@ x25519stanza(Header *h, Data filekey, uchar pubkey[32])
 	ok = X25519(share, esecret, basepoint);
 	if(!ok)
 		errx(1, "x25519: X25519 fail");
-	base64_encode(share, b64share, sizeof share, &outlen, 0);
+	base64encode(share, b64share, sizeof share, &outlen, 0);
 	hdrappend(h, "-> X25519 %s\n", b64share);
 	b = body(share, esecret, pubkey, filekey);
 	b64body = emalloc(B64EBUFLEN(b.len));
-	base64_encode(b.data, b64body, b.len, &outlen, 0);
+	base64encode(b.data, b64body, b.len, &outlen, 0);
 	hdrappend(h, "%s\n", b64body);
 	free(b64body);
 	free(b.data);

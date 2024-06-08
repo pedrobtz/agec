@@ -9,8 +9,8 @@
 #include <openssl/kdf.h>
 #include <openssl/hmac.h>
 
-#include "base64.h"
 #include "common.h"
+#include "base64.h"
 #include "header.h"
 
 #define HDRINITLEN 128
@@ -52,7 +52,7 @@ hdrmac(uchar *data, size_t len, Data filekey, char *out, size_t *outlen)
 	uchar md[32];
 
 	mac(data, len, filekey, md);
-	base64_encode(md, (uchar *)out, sizeof md, outlen, 0);
+	base64encode(md, (uchar *)out, sizeof md, outlen, 0);
 }
 
 void

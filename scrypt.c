@@ -7,8 +7,8 @@
 #include <openssl/rand.h>
 
 #include "libscrypt/scrypt-kdf.h"
-#include "base64.h"
 #include "common.h"
+#include "base64.h"
 #include "header.h"
 #include "keyenc.h"
 #include "scrypt.h"
@@ -39,13 +39,14 @@ stanza(Header *h, Data filekey, char *pass, uchar *salt)
 	uchar b64salt[B64EBUFLEN(SALTLEN)], *b64body;
 	uchar key[32];
 	Data body;
+	size_t outlen;
 
-	base64_encode(salt, b64salt, SALTLEN, NULL, 0);
+	base64encode(salt, b64salt, SALTLEN, &outlen, 0);
 	catlabel(salt);
 	wrapkey(key, pass, salt, COST);
 	body = keyenc(key, filekey);
 	b64body = emalloc(B64EBUFLEN(body.len));
-	base64_encode(body.data, b64body, body.len, NULL, 0);
+	base64encode(body.data, b64body, body.len, &outlen, 0);
 	if(b64body == NULL)
 		err(1, "scrypt: failed to convert to base64");
 	hdrappend(h, "-> scrypt %s %d\n", b64salt, COST);

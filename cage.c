@@ -53,7 +53,7 @@ static void decipher(Ibuf *in, Obuf *out, Keys *ids);
 
 char *argv0;
 static const char armorfirst[] = "-----BEGIN AGE ENCRYPTED FILE-----\n";
-static const char armorlast[]  = "\n-----END AGE ENCRYPTED FILE-----\n";
+static const char armorlast[]  = "-----END AGE ENCRYPTED FILE-----\n";
 
 static void
 usage(void)
