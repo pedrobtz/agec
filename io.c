@@ -159,6 +159,7 @@ ibfree(Ibuf *b)
 		explicit_bzero(b->rec.buf, b->rec.capacity);
 		free(b->rec.buf);
 	}
+	explicit_bzero(b, sizeof(*b));
 }
 
 ssize_t

@@ -510,10 +510,12 @@ main(int argc, char *argv[])
 			goto badusage;
 		encipher(&ib, &ob, pflag, &recs);
 	}
+	explicit_bzero(&ob, sizeof(ob));
 	keyfree(&recs);
 	ibfree(&ib);
 	return 0;
 badusage:
+	explicit_bzero(&ob, sizeof(ob));
 	keyfree(&recs);
 	ibfree(&ib);
 	usage();
