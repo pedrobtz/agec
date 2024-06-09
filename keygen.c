@@ -13,7 +13,8 @@ char *argv0;
 
 typedef struct Keypair Keypair;
 struct Keypair {
-	uchar *pub, *priv;
+	uchar pub[32];
+	uchar priv[32];
 };
 
 static void
@@ -28,8 +29,6 @@ genkey(void)
 {
 	Keypair kp;
 
-	kp.pub = emalloc(X25519_KEY_LENGTH);
-	kp.priv = emalloc(X25519_KEY_LENGTH);
 	X25519_keypair(kp.pub, kp.priv);
 	return kp;
 }
@@ -51,10 +50,10 @@ print(Keypair kp)
 	uchar priv[75];
 	int ok;
 
-	ok = bech32encode("age", kp.pub, X25519_KEY_LENGTH, pub);
+	ok = bech32encode("age", kp.pub, 32, pub);
 	if(!ok)
 		goto fail;
-	ok = bech32encode("age-secret-key-", kp.priv, X25519_KEY_LENGTH, priv);
+	ok = bech32encode("age-secret-key-", kp.priv, 32, priv);
 	if(!ok)
 		goto fail;
 	if(!isatty(1))
@@ -78,8 +77,6 @@ main(int argc, char *argv[])
 		usage();
 	kp = genkey();
 	print(kp);
-	explicit_bzero(kp.priv, X25519_KEY_LENGTH);
-	free(kp.pub);
-	free(kp.priv);
+	explicit_bzero(kp.priv, 32);
 	return 0;
 }
