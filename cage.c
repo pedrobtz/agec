@@ -389,30 +389,26 @@ static void
 match(Ibuf *in, uchar filekey[16], Stanza *s, Keys *ids, int *found)
 {
 	const char *e;
-	int end, seenscrypt;
+	int end, seenscrypt, n;
 	unsigned i;
 
-	for(seenscrypt = *found = 0;;) {
+	for(n = seenscrypt = *found = 0;; n++) {
 		e = getstanza(in, s, &end);
 		if(e)
 			errx(1, "error parsing header: %s", e);
 		if(end)
 			break;
-		if(seenscrypt) {
-			errx(1, "invalid input: "
-				"scrypt recipient is not the only one");
-		}
 		if(s->type == SCRYPT) {
 			seenscrypt = *found = 1;
 		} else if(s->type == X25519 && !*found) {
 			for(i = 0; i < ids->len && !*found; i++) {
 				*found = x25519getkey(filekey, &s->x25519,
 						ids->buf[i].r);
-				if(*found)
-					break;
 			}
 		}
 	}
+	if(n > 1 && seenscrypt)
+		errx(1, "invalid input: scrypt recipient is not the only one");
 }
 
 static void
