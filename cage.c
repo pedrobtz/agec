@@ -496,7 +496,7 @@ main(int argc, char *argv[])
 	ob.fd = 1;
 	ibinit(&ib, 0);
 	if(dflag) {
-		if(pflag || recs.len)
+		if(pflag || recs.len || ob.isarmor)
 			goto badusage;
 		if(idpath) {
 			keyinit(&ids);
