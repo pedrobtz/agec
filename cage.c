@@ -60,9 +60,9 @@ static void
 usage(void)
 {
 	fprintf(stderr, "usage:"
-			"\t%s [-a] (-r recipient)...)\n"
-			"\t%s [-a] -p\n"
-			"\t%s [-i path] -d\n",
+			"\t%s [-a] (-r recipient)...) [file]\n"
+			"\t%s [-a] -p [file]\n"
+			"\t%s [-i path] -d [file]\n",
 			argv0, argv0, argv0);
 	exit(1);
 }
@@ -453,7 +453,7 @@ main(int argc, char *argv[])
 	Keys recs, ids;
 	int pflag = 0, dflag = 0;
 	const char *idpath = NULL;
-	int ch;
+	int ch, fd;
 
 	argv0 = argv[0] ? argv[0] : "cage";
 	keyinit(&recs);
@@ -486,15 +486,22 @@ main(int argc, char *argv[])
 	}
 	argc -= optind;
 	argv += optind;
-	if(argc != 0)
-		goto badusage;
 	if(!dflag && pflag && recs.len > 0)
 		goto badusage;
 	if(!dflag && !pflag && recs.len == 0)
 		goto badusage;
+	if(argc == 1) {
+		fd = open(argv[0], O_RDONLY);
+		if(fd == -1)
+			err(1, "failed to open input file");
+		ibinit(&ib, fd);
+	} else if(argc == 0) {
+		ibinit(&ib, 0);
+	} else {
+		goto badusage;
+	}
 	ob.cur = 0;
 	ob.fd = 1;
-	ibinit(&ib, 0);
 	if(dflag) {
 		if(pflag || recs.len || ob.isarmor)
 			goto badusage;
