@@ -80,6 +80,7 @@ plencrypt(Ibuf *in, Obuf *out, uchar plkey[32])
 			goto fail;
 		}
 	}
+	EVP_AEAD_CTX_free(ctx);
 	return NULL;
 fail:
 	EVP_AEAD_CTX_free(ctx);
@@ -181,6 +182,7 @@ pldecrypt(Ibuf *in, Obuf *out, uchar plkey[32])
 			goto fail;
 		}
 	}
+	EVP_AEAD_CTX_free(ctx);
 	return NULL;
 fail:
 	EVP_AEAD_CTX_free(ctx);

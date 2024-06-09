@@ -35,7 +35,8 @@ static void usage(void);
 static void payload(uchar filekey[16], Ibuf *in, Obuf *out);
 static void passenc(Header *h, Data filekey);
 static void pubenc(Header *h, Data filekey, Keys *recs);
-static void keyinit(Keys *recs);
+static void keyinit(Keys *keys);
+static void keyfree(Keys *keys);
 static void keynew(Keys *keys);
 static void recadd(Keys *recs, char *bech);
 static int privadd(Keys *recs, char bech[74+1]);
@@ -72,6 +73,18 @@ keyinit(Keys *keys)
 	keys->len = 0;
 	keys->capacity = 32;
 	keys->buf = emalloc(keys->capacity * sizeof(Key));
+}
+
+static void
+keyfree(Keys *keys)
+{
+	size_t n;
+
+	n = keys->capacity * sizeof(Key);
+	if(keys->capacity > 0 && n / keys->capacity != sizeof(Key))
+		errx(1, "failed to free memory: overflow");
+	explicit_bzero(keys->buf, n);
+	free(keys->buf);
 }
 
 /* Allocate keys->buf for another recepient */
@@ -305,12 +318,10 @@ encipher(Ibuf *in, Obuf *out, int ispass, Keys *recs)
 	hdrinit(&h);
 	hdrappend(&h, "age-encryption.org/v1\n");
 	filekey = mkfilekey();
-	if(ispass) {
+	if(ispass)
 		passenc(&h, filekey);
-	} else {
+	else
 		pubenc(&h, filekey, recs);
-		free(recs->buf);
-	}
 	hdrappend(&h, "---");
 	hdrmac(h.data, h.len, filekey, mac, &maclen);
 	if(out->isarmor)
@@ -446,7 +457,6 @@ main(int argc, char *argv[])
 
 	argv0 = argv[0] ? argv[0] : "cage";
 	keyinit(&recs);
-	keyinit(&ids);
 	ob.isarmor = 0;
 	while((ch = getopt(argc, argv, "adi:pr:")) != -1) {
 		switch(ch) {
@@ -457,8 +467,10 @@ main(int argc, char *argv[])
 			dflag = 1;
 			break;
 		case 'i':
-			if(idpath)
+			if(idpath) {
+				keyfree(&recs);
 				usage();
+			}
 			idpath = optarg;
 			break;
 		case 'p':
@@ -468,30 +480,41 @@ main(int argc, char *argv[])
 			recadd(&recs, optarg);
 			break;
 		default:
+			keyfree(&recs);
 			usage();
 		}
 	}
 	argc -= optind;
 	argv += optind;
 	if(argc != 0)
-		usage();
+		goto badusage;
 	if(!dflag && pflag && recs.len > 0)
-		usage();
+		goto badusage;
 	if(!dflag && !pflag && recs.len == 0)
-		usage();
+		goto badusage;
 	ob.cur = 0;
 	ob.fd = 1;
 	ibinit(&ib, 0);
 	if(dflag) {
-		if(pflag || recs.len > 0)
-			usage();
-		if(idpath)
+		if(pflag || recs.len)
+			goto badusage;
+		if(idpath) {
+			keyinit(&ids);
 			readprivkeys(&ids, idpath);
+		}
 		decipher(&ib, &ob, &ids);
+		if(idpath)
+			keyfree(&ids);
 	} else {
 		if(idpath)
-			usage();
+			goto badusage;
 		encipher(&ib, &ob, pflag, &recs);
 	}
+	keyfree(&recs);
 	ibfree(&ib);
+	return 0;
+badusage:
+	keyfree(&recs);
+	ibfree(&ib);
+	usage();
 }

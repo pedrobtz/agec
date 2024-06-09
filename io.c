@@ -155,8 +155,10 @@ ibinit(Ibuf *b, int fd)
 void
 ibfree(Ibuf *b)
 {
-	if(b->recording && b->rec.capacity > 0)
+	if(b->rec.capacity > 0) {
+		explicit_bzero(b->rec.buf, b->rec.capacity);
 		free(b->rec.buf);
+	}
 }
 
 ssize_t
