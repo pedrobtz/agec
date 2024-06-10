@@ -115,7 +115,7 @@ base64decode(uchar *in, uchar *out, size_t inlen, size_t *outlen, int pad)
 {
 	size_t lastlen = 0;
 	unsigned i, j, line;
-	uchar c, next;
+	uchar c, next = 0;
 
 	if(pad) {
 		lastlen = inlen - (inlen - inlen % (LINELEN + 1));
@@ -159,6 +159,8 @@ base64decode(uchar *in, uchar *out, size_t inlen, size_t *outlen, int pad)
 			break;
 		}
 	}
+	if((i - line) & 0x3 && next)
+		return 0;    /* non-canonical */
 	*outlen = j;
 	return 1;
 }
