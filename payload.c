@@ -198,7 +198,7 @@ decchunk(EVP_AEAD_CTX *ctx, Data in, uchar nonce[12], uchar *out)
 	ok = EVP_AEAD_CTX_open(ctx, out, &outlen, CHUNKLEN + TAGLEN,
 			nonce, 12, in.data, in.len, NULL, 0);
 	if(!ok)
-		errx(1, "%s", ERR_error_string(ERR_get_error(), NULL));
+		errx(1, "failed to decrypt and authenticate payload");
 	assert(outlen == in.len - TAGLEN);
 	return outlen;
 }
