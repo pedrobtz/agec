@@ -73,7 +73,7 @@ skipargline(Ibuf *b)
 {
 	static const char *einval = "invalid stanza optional argument";
 	ssize_t nr;
-	int prevspace = 0;
+	int prevspace = 1;
 	char c;
 
 	for(;;) {
@@ -225,6 +225,7 @@ getstanza(Ibuf *in, Stanza *s, int *end)
 	e = getarg(in, buf, sizeof(buf), &arglen, &fullread);
 	if(e)
 		return e;
+	s->type = UNKNOWN;
 	if(!fullread) {
 		e = skiparg(in);
 		if(e)
@@ -233,17 +234,22 @@ getstanza(Ibuf *in, Stanza *s, int *end)
 	}
 	if(arglen != sizeof(buf))
 		goto unknown;
+	if(memcmp(buf, argscrypt, sizeof(argscrypt) - 1) == 0)
+		s->type = SCRYPT;
+	else if(memcmp(buf, argx25519, sizeof(argx25519) - 1) == 0)
+		s->type = X25519;
+	else
+		goto unknown;
 	nr = readc(in, &c);
 	if(nr == -1)
 		return strerror(errno);
 	if(nr == 0 || c != ' ')
 		return einval;
-	if(memcmp(buf, argscrypt, sizeof(argscrypt) - 1) == 0)
+	if(s->type == SCRYPT)
 		return getscrypt(in, s);
-	if(memcmp(buf, argx25519, sizeof(argx25519) - 1) == 0)
+	if(s->type == X25519)
 		return getx25519(in, s);
 unknown:
-	s->type = UNKNOWN;
 	return skipstanza(in);
 }
 
