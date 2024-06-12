@@ -5,9 +5,9 @@
 #include <stdlib.h>
 #include <string.h>
 #include <unistd.h>
-#include <openssl/rand.h>
 
 #include "common.h"
+#include "crypto.h"
 #include "base64.h"
 #include "header.h"
 #include "scrypt.h"
@@ -132,7 +132,7 @@ mkfilekey(void)
 
 	k.len = 16;
 	k.data = emalloc(k.len);
-	if(RAND_bytes(k.data, k.len) != 1)
+	if(randombuf(k.data, k.len) == 0)
 		errx(1, "failed to generate file key");
 	return k;
 }
@@ -144,7 +144,7 @@ payload(uchar filekey[16], Ibuf *in, Obuf *out)
 	const char *e;
 	int ok;
 
-	ok = RAND_bytes(plnonce, 16);
+	ok = randombuf(plnonce, 16);
 	if(!ok)
 		errx(1, "failed to generate payload nonce");
 	payloadkey(filekey, plnonce, plkey);

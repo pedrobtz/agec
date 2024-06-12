@@ -4,10 +4,10 @@
 #include <string.h>
 #include <openssl/err.h>
 #include <openssl/evp.h>
-#include <openssl/rand.h>
 
 #include "libscrypt/scrypt-kdf.h"
 #include "common.h"
+#include "crypto.h"
 #include "base64.h"
 #include "header.h"
 #include "keyenc.h"
@@ -28,7 +28,7 @@ scryptstanza(Header *h, Data filekey, char *pass)
 {
 	uchar salt[SALTLEN + sizeof(label) - 1];
 
-	if(RAND_bytes(salt, SALTLEN) != 1)
+	if(randombuf(salt, SALTLEN) == 0)
 		errx(1, "scrypt: failed to generate salt");
 	stanza(h, filekey, pass, salt);
 }

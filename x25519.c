@@ -4,7 +4,6 @@
 #include <string.h>
 #include <openssl/evp.h>
 #include <openssl/hkdf.h>
-#include <openssl/rand.h>
 
 #include "common.h"
 #include "base64.h"
@@ -32,7 +31,7 @@ x25519stanza(Header *h, Data filekey, uchar pubkey[32])
 	size_t outlen;
 	int ok;
 
-	ok = RAND_bytes(esecret, sizeof esecret);
+	ok = randombuf(esecret, sizeof esecret);
 	if(!ok)
 		errx(1, "x25519: failed to generate ephemeral secret");
 	ok = x25519(share, esecret, curve25519basepoint);

@@ -3,7 +3,6 @@
 #include <stdlib.h>
 #include <string.h>
 #include <unistd.h>
-#include <openssl/rand.h>
 
 #include "common.h"
 #include "bech32.h"
@@ -31,7 +30,7 @@ genkey(void)
 	Keypair kp;
 	int ok;
 
-	ok = RAND_bytes(kp.priv, 32);
+	ok = randombuf(kp.priv, 32);
 	if(!ok) {
 		fprintf(stderr, "%s: failed to generate private key\n", argv0);
 		exit(1);
