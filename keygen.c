@@ -3,10 +3,11 @@
 #include <stdlib.h>
 #include <string.h>
 #include <unistd.h>
-#include <openssl/curve25519.h>
+#include <openssl/rand.h>
 
 #include "common.h"
 #include "bech32.h"
+#include "crypto.h"
 #include "util.h"
 
 char *argv0;
@@ -28,8 +29,19 @@ static Keypair
 genkey(void)
 {
 	Keypair kp;
+	int ok;
 
-	X25519_keypair(kp.pub, kp.priv);
+	ok = RAND_bytes(kp.priv, 32);
+	if(!ok) {
+		fprintf(stderr, "%s: failed to generate private key\n", argv0);
+		exit(1);
+	}
+	ok = x25519pub(kp.pub, kp.priv);
+	if(!ok) {
+		fprintf(stderr, "%s: failed to generate public key"
+				"internal x25519 failure\n", argv0);
+		exit(1);
+	}
 	return kp;
 }
 
@@ -63,7 +75,7 @@ print(Keypair kp)
 	explicit_bzero(priv, sizeof priv);
 	return;
 fail:
-	fprintf(stderr, "failed to encode key");
+	fprintf(stderr, "%s: failed to encode key\n", argv0);
 	exit(1);
 }
 

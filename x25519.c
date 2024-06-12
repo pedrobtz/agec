@@ -5,7 +5,6 @@
 #include <openssl/evp.h>
 #include <openssl/hkdf.h>
 #include <openssl/rand.h>
-#include <openssl/curve25519.h>
 
 #include "common.h"
 #include "base64.h"
@@ -13,6 +12,7 @@
 #include "header.h"
 #include "keyenc.h"
 #include "util.h"
+#include "crypto.h"
 #include "x25519.h"
 
 #define HDRINITLEN  128
@@ -22,9 +22,6 @@
 
 static void wrap(uchar out[32], uchar share[32], uchar secret[32], uchar pubkey[32]);
 static Data body(uchar share[32], uchar esecret[32], uchar pubkey[32], Data filekey);
-static void pub(uchar out[32], uchar priv[32]);
-
-static const uchar basepoint[32] = { [0] = 9 };
 
 void
 x25519stanza(Header *h, Data filekey, uchar pubkey[32])
@@ -38,9 +35,9 @@ x25519stanza(Header *h, Data filekey, uchar pubkey[32])
 	ok = RAND_bytes(esecret, sizeof esecret);
 	if(!ok)
 		errx(1, "x25519: failed to generate ephemeral secret");
-	ok = X25519(share, esecret, basepoint);
+	ok = x25519(share, esecret, curve25519basepoint);
 	if(!ok)
-		errx(1, "x25519: X25519 fail");
+		errx(1, "x25519: internal failure");
 	base64encode(share, b64share, sizeof share, &outlen, 0);
 	hdrappend(h, "-> X25519 %s\n", b64share);
 	b = body(share, esecret, pubkey, filekey);
@@ -59,9 +56,9 @@ body(uchar share[32], uchar esecret[32], uchar pubkey[32], Data filekey)
 	Data body;
 	int ok;
 
-	ok = X25519(secret, esecret, pubkey);
+	ok = x25519(secret, esecret, pubkey);
 	if(!ok)
-		errx(1, "x25519: internal primitive failure");
+		errx(1, "x25519: internal failure");
 	wrap(wrapkey, share, secret, pubkey);
 	body = keyenc(wrapkey, filekey);
 	explicit_bzero(secret, sizeof secret);
@@ -126,26 +123,18 @@ x25519privkey(char bech[74+1], uchar privkey[32])
 	return 1;
 }
 
-static void
-pub(uchar out[32], uchar priv[32])
-{
-	int ok;
-
-	ok = X25519(out, priv, basepoint);
-	if(!ok)
-		errx(1, "x25519: X25519 fail");
-}
-
 int
 x25519getkey(uchar k[16], X25519arg *arg, uchar privkey[32])
 {
 	uchar secret[32], pubkey[32], wrapkey[32];
 	int ok;
 
-	ok = X25519(secret, privkey, arg->share);
+	ok = x25519(secret, privkey, arg->share);
 	if(!ok)
-		errx(1, "x25519: X25519 fail");
-	pub(pubkey, privkey);
+		errx(1, "x25519: failed to compute");
+	ok = x25519pub(pubkey, privkey);
+	if(!ok)
+		errx(1, "x25519: internal failure");
 	wrap(wrapkey, arg->share, secret, pubkey);
 	return keydec(wrapkey, arg->body, k);
 }
