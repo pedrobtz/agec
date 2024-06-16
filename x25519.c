@@ -2,8 +2,6 @@
 #include <err.h>
 #include <stdint.h>
 #include <string.h>
-#include <openssl/evp.h>
-#include <openssl/hkdf.h>
 
 #include "common.h"
 #include "base64.h"
@@ -69,17 +67,11 @@ wrap(uchar out[32], uchar share[32], uchar secret[32], uchar pubkey[32])
 {
 	static const uchar info[] = "age-encryption.org/v1/X25519";
 	uchar salt[64];
-	int ok;
 
 	memcpy(salt, share, 32);
 	memcpy(salt + 32, pubkey, 32);
-	ok = HKDF(out, 32, EVP_sha256(), secret, 32, salt, sizeof(salt),
-			info, sizeof(info) - 1);
-	if(!ok) {
-		explicit_bzero(share, 32);
-		explicit_bzero(secret, 32);
-		errx(1, "x25519: failed to derive key");
-	}
+	hkdfsha256(secret, 32, salt, sizeof(salt),
+			info, sizeof(info) - 1, out);
 }
 
 int

@@ -19,3 +19,4 @@ void sha256update(Sha256ctx *ctx, const void *m, unsigned long len);
 /* part of the message might be left in ctx, zero it if secrecy is needed */
 void sha256final(Sha256ctx *ctx, uchar md[SHA256_DIGEST_LENGTH]);
 void hmacsha256(const uchar *k, size_t klen, const uchar *in, size_t inlen, uchar out[32]);
+void hkdfsha256(const uchar *ikm, size_t ikmlen, const uchar *salt, size_t saltlen, const uchar *info, size_t infolen, uchar out[32]);

@@ -4,10 +4,10 @@
 #include <string.h>
 #include <openssl/err.h>
 #include <openssl/evp.h>
-#include <openssl/hkdf.h>
 
 #include "common.h"
 #include "base64.h"
+#include "crypto.h"
 #include "util.h"
 #include "io.h"
 #include "payload.h"
@@ -25,13 +25,8 @@ void
 payloadkey(uchar filekey[16], uchar nonce[16], uchar plkey[32])
 {
 	static const uchar label[] = "payload";
-	int ok;
 
-	ok = HKDF(plkey, 32, EVP_sha256(), filekey, 16,
-			nonce, 16, label, sizeof(label) - 1);
-	if(!ok)
-		errx(1, "failed to derive payload key: %s",
-				ERR_error_string(ERR_get_error(), NULL));
+	hkdfsha256(filekey, 16, nonce, 16, label, sizeof(label) - 1, plkey);
 }
 
 const char *

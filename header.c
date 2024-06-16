@@ -1,12 +1,9 @@
 #include <assert.h>
 #include <err.h>
 #include <stdarg.h>
+#include <stdint.h>
 #include <stdio.h>
 #include <string.h>
-#include <openssl/err.h>
-#include <openssl/evp.h>
-#include <openssl/hkdf.h>
-#include <openssl/kdf.h>
 
 #include "common.h"
 #include "crypto.h"
@@ -59,11 +56,8 @@ void
 mac(uchar *data, size_t len, Data filekey, uchar out[32])
 {
 	uchar dk[32];
-	int ok;
 
-	ok = HKDF(dk, sizeof dk, EVP_sha256(), filekey.data, filekey.len,
-		(uchar *)"", 0, label, sizeof(label) - 1);
-	if(!ok)
-		errx(1, "%s", ERR_error_string(ERR_get_error(), NULL));
+	hkdfsha256(filekey.data, filekey.len, NULL, 0,
+			label, sizeof(label) - 1, dk);
 	hmacsha256(dk, sizeof(dk), data, len, out);
 }
