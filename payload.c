@@ -1,9 +1,8 @@
-#include <assert.h>
 #include <err.h>
+#include <errno.h>
 #include <stdio.h>
 #include <string.h>
-#include <openssl/err.h>
-#include <openssl/evp.h>
+#include <stdint.h>
 
 #include "common.h"
 #include "base64.h"
@@ -16,10 +15,9 @@
 #define TAGLEN   16      /* poly1305 authentication tag */
 
 static int eof(Ibuf *b);
-static size_t ploutlen(void);
 static void incnonce(uchar nonce[12]);
-static size_t encchunk(EVP_AEAD_CTX *ctx, Data in, uchar nonce[12], uchar *out);
-static size_t decchunk(EVP_AEAD_CTX *ctx, Data in, uchar nonce[12], uchar *out);
+static size_t encchunk(Data in, uchar key[32], uchar nonce[12], uchar *out);
+static size_t decchunk(Data in, uchar key[32], uchar nonce[12], uchar *out);
 
 void
 payloadkey(uchar filekey[16], uchar nonce[16], uchar plkey[32])
@@ -34,52 +32,29 @@ plencrypt(Ibuf *in, Obuf *out, uchar plkey[32])
 {
 	uchar inbuf[CHUNKLEN], outbuf[CHUNKLEN + TAGLEN];
 	uchar nonce[12] = {0};
-	const char *e;
-	EVP_AEAD_CTX *ctx;
 	Data ichunk;
 	size_t outlen;
 	ssize_t nr, nw;
 	int last;
-	int ok;
 
 	outlen = sizeof(outbuf);
-	assert(sizeof(outbuf) == ploutlen());
 	ichunk.data = inbuf;
-	ctx = EVP_AEAD_CTX_new();
-	if(ctx == NULL)
-		return "failed to allocate a context";
-	ok = EVP_AEAD_CTX_init(ctx, EVP_aead_chacha20_poly1305(),
-			plkey, 32, TAGLEN, NULL);
-	if(!ok) {
-		e = ERR_error_string(ERR_get_error(), NULL);
-		goto fail;
-	}
 	for(last = 0; !last; incnonce(nonce)) {
 		nr = bread(in, inbuf, CHUNKLEN);
-		if(nr == -1) {
-			e = strerror(errno);
-			goto fail;
-		}
+		if(nr == -1)
+			return strerror(errno);
 		last = eof(in);
-		if(last == -1) {
-			e = strerror(errno);
-			goto fail;
-		}
+		if(last == -1)
+			return strerror(errno);
 		ichunk.len = nr;
 		if(last)
 			nonce[11] = 1;
-		outlen = encchunk(ctx, ichunk, nonce, outbuf);
+		outlen = encchunk(ichunk, plkey, nonce, outbuf);
 		nw = bwrite(out, outbuf, outlen);
-		if(nw == -1) {
-			e = strerror(errno);
-			goto fail;
-		}
+		if(nw == -1)
+			return strerror(errno);
 	}
-	EVP_AEAD_CTX_free(ctx);
 	return NULL;
-fail:
-	EVP_AEAD_CTX_free(ctx);
-	return e;
 }
 
 static int
@@ -99,12 +74,6 @@ eof(Ibuf *b)
 		return 0;
 }
 
-static size_t
-ploutlen(void)
-{
-	return CHUNKLEN + EVP_AEAD_max_overhead(EVP_aead_chacha20_poly1305());
-}
-
 static void
 incnonce(uchar nonce[12])
 {
@@ -120,16 +89,14 @@ incnonce(uchar nonce[12])
 }
 
 static size_t
-encchunk(EVP_AEAD_CTX *ctx, Data in, uchar nonce[12], uchar *out)
+encchunk(Data in, uchar key[32], uchar nonce[12], uchar *out)
 {
-	size_t outlen;
-	int ok;
+	Chacha20poly1305ctx ctx;
 
-	ok = EVP_AEAD_CTX_seal(ctx, out, &outlen, CHUNKLEN + TAGLEN,
-			nonce, 12, in.data, in.len, NULL, 0);
-	if(!ok)
-		errx(1, "%s", ERR_error_string(ERR_get_error(), NULL));
-	return outlen;
+	chacha20poly1305init(&ctx, key, nonce);
+	chacha20poly1305write(&ctx, out, NULL, 0, in.data, in.len);
+	explicit_bzero(&ctx, sizeof(ctx));
+	return in.len + TAGLEN;
 }
 
 const char *
@@ -137,81 +104,50 @@ pldecrypt(Ibuf *in, Obuf *out, uchar plkey[32])
 {
 	uchar outbuf[CHUNKLEN + TAGLEN], inbuf[CHUNKLEN + TAGLEN];
 	uchar nonce[12] = {0};
-	const char *e;
-	EVP_AEAD_CTX *ctx;
 	Data ichunk;
 	size_t outlen;
 	ssize_t nr, nw;
 	int last;
-	int ok;
 
-	assert(sizeof(inbuf) == ploutlen());
 	ichunk.data = inbuf;
-	ctx = EVP_AEAD_CTX_new();
-	if(ctx == NULL)
-		return "failed to allocate a context";
-	ok = EVP_AEAD_CTX_init(ctx, EVP_aead_chacha20_poly1305(),
-			plkey, 32, TAGLEN, NULL);
-	if(!ok) {
-		e = ERR_error_string(ERR_get_error(), NULL);
-		goto fail;
-	}
 	for(last = 0; !last; incnonce(nonce)) {
 		nr = bread(in, inbuf, sizeof(inbuf));
-		if(nr == -1) {
-			e = strerror(errno);
-			goto fail;
-		}
+		if(nr == -1)
+			return strerror(errno);
 		last = eof(in);
-		if(last == -1) {
-			e = strerror(errno);
-			goto fail;
-		}
+		if(last == -1)
+			return strerror(errno);
 		ichunk.len = nr;
 		if(last)
 			nonce[11] = 1;
-		outlen = decchunk(ctx, ichunk, nonce, outbuf);
+		outlen = decchunk(ichunk, plkey, nonce, outbuf);
 		nw = bwrite(out, outbuf, outlen);
-		if(nw == -1) {
-			e = strerror(errno);
-			goto fail;
-		}
+		if(nw == -1)
+			return strerror(errno);
 	}
-	EVP_AEAD_CTX_free(ctx);
 	return NULL;
-fail:
-	EVP_AEAD_CTX_free(ctx);
-	return e;
 }
 
+/* TODO: return error instead of aborting */
 static size_t
-decchunk(EVP_AEAD_CTX *ctx, Data in, uchar nonce[12], uchar *out)
+decchunk(Data in, uchar key[32], uchar nonce[12], uchar *out)
 {
-	size_t outlen;
-	int ok;
+	Chacha20poly1305ctx ctx;
+	int fail;
 
-	ok = EVP_AEAD_CTX_open(ctx, out, &outlen, CHUNKLEN + TAGLEN,
-			nonce, 12, in.data, in.len, NULL, 0);
-	if(!ok)
+	chacha20poly1305init(&ctx, key, nonce);
+	fail = chacha20poly1305read(&ctx, out, NULL, 0, in.data, in.len);
+	if(fail)
 		errx(1, "failed to decrypt and authenticate payload");
-	assert(outlen == in.len - TAGLEN);
-	return outlen;
+	explicit_bzero(&ctx, sizeof(ctx));
+	return in.len - TAGLEN;
 }
 
 const char *
 plinit(Ebuf *b, Ibuf *ib, uchar plkey[32])
 {
-	int ok;
-
-	assert(sizeof(b->ibuf) == ploutlen());
-	b->ctx = (struct Ectx *)EVP_AEAD_CTX_new();
-	if(b->ctx == NULL)
-		return "failed to allocate a context";
-	ok = EVP_AEAD_CTX_init((EVP_AEAD_CTX *)b->ctx,
-			EVP_aead_chacha20_poly1305(), plkey, 32, TAGLEN, NULL);
-	if(!ok)
-		return ERR_error_string(ERR_get_error(), NULL);
 	b->in = ib;
+	memcpy(b->key, plkey, 32);
 	memset(b->nonce, 0, sizeof(b->nonce));
 	b->cur = b->size = 0;
 	return NULL;
@@ -220,7 +156,6 @@ plinit(Ebuf *b, Ibuf *ib, uchar plkey[32])
 void
 plfree(Ebuf *b)
 {
-	EVP_AEAD_CTX_free((EVP_AEAD_CTX *)b->ctx);
 	explicit_bzero(b, sizeof(*b));
 }
 
@@ -251,8 +186,7 @@ plread(Ebuf *b, void *buf, size_t nbytes)
 			if(nr == 0)
 				return 0;
 			ichunk.len = nr;
-			b->size = decchunk((EVP_AEAD_CTX *)b->ctx,
-					ichunk, b->nonce, b->obuf);
+			b->size = decchunk(ichunk, b->key, b->nonce, b->obuf);
 			incnonce(b->nonce);
 		}
 		rest = b->size - b->cur;
@@ -289,7 +223,7 @@ plpeek(Ebuf *b, char *c)
 	if(last)
 		b->nonce[11] = 1;
 	ichunk.len = nr;
-	b->size = decchunk((EVP_AEAD_CTX *)b->ctx, ichunk, b->nonce, b->obuf);
+	b->size = decchunk(ichunk, b->key, b->nonce, b->obuf);
 	incnonce(b->nonce);
 	*c = b->obuf[0];
 	return 1;

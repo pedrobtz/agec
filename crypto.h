@@ -7,6 +7,12 @@ struct Sha256ctx {
         uchar buf[64];  /* message block buffer */
 };
 
+typedef struct Chacha20poly1305ctx Chacha20poly1305ctx;
+struct Chacha20poly1305ctx {
+	uint64_t counter;
+	uchar key[32];
+	uchar nonce[8];
+};
 
 extern const uchar curve25519basepoint[32];
 
@@ -20,3 +26,6 @@ void sha256update(Sha256ctx *ctx, const void *m, unsigned long len);
 void sha256final(Sha256ctx *ctx, uchar md[SHA256_DIGEST_LENGTH]);
 void hmacsha256(const uchar *k, size_t klen, const uchar *in, size_t inlen, uchar out[32]);
 void hkdfsha256(const uchar *ikm, size_t ikmlen, const uchar *salt, size_t saltlen, const uchar *info, size_t infolen, uchar out[32]);
+void chacha20poly1305init(Chacha20poly1305ctx *ctx, const uchar key[32], const uchar nonce[12]);
+void chacha20poly1305write(Chacha20poly1305ctx *ctx, uchar *out, const uchar *ad, size_t adlen, const uchar *in, size_t inlen);
+int chacha20poly1305read(Chacha20poly1305ctx *ctx, uchar *out, const uchar *ad, size_t adlen, const uchar *in, size_t inlen);

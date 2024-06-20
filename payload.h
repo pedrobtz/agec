@@ -1,16 +1,14 @@
 #define CHUNKLEN 64*1024
 #define TAGLEN   16      /* poly1305 authentication tag */
 
-struct Ectx;
 struct Ibuf;
 
 typedef struct Ebuf Ebuf;
 struct Ebuf {
 	uchar ibuf[CHUNKLEN + TAGLEN];
 	uchar obuf[CHUNKLEN + TAGLEN];
-	struct Ectx *ctx;
 	struct Ibuf *in;
-	uchar nonce[12];
+	uchar key[32], nonce[12];
 	size_t cur, size;
 };
 
