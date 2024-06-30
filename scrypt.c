@@ -5,7 +5,6 @@
 #include <openssl/err.h>
 #include <openssl/evp.h>
 
-#include "libscrypt/scrypt-kdf.h"
 #include "common.h"
 #include "crypto.h"
 #include "base64.h"
@@ -58,9 +57,14 @@ stanza(Header *h, Data filekey, char *pass, uchar *salt)
 static void
 wrapkey(uchar key[32], char *pass, uchar *salt, unsigned factor)
 {
-	scrypt_kdf((uchar *)pass, strlen(pass),
+	const char *e;
+
+	e = scrypt((uchar *)pass, strlen(pass),
 			salt, SALTLEN + sizeof(label) - 1,
 			1<<factor, 8, 1, key, 32);
+	if(e)
+		errx(1, "scrypt: %s", e);
+		
 }
 
 static void

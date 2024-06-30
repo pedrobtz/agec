@@ -1,10 +1,10 @@
 CC ?= cc
 CFLAGS += -Werror -Wall -Wextra -pedantic
 LIBS = -lssl -lcrypto
-OBJ_CAGE = cage.o base64.o scrypt.o util.o libscrypt/crypto_scrypt.o \
-	libscrypt/sha256.o header.o payload.o x25519.o bech32.o io.o \
-	keyenc.o parse.o crypto/curve25519.o crypto/random.o crypto/sha256.o \
-	crypto/hmac.o crypto/hkdf.o crypto/chacha20poly1305.o
+OBJ_CAGE = cage.o base64.o scrypt.o util.o header.o payload.o x25519.o \
+	bech32.o io.o keyenc.o parse.o crypto/curve25519.o crypto/random.o \
+	crypto/sha256.o crypto/hmac.o crypto/hkdf.o crypto/chacha20poly1305.o \
+	crypto/scrypt.o
 OBJ_KEYGEN = keygen.o bech32.o util.o crypto/curve25519.o crypto/random.o
 OBJS = $(OBJ_CAGE) $(OBJ_KEYGEN)
 PREFIX ?= /usr/local
