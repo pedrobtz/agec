@@ -31,11 +31,11 @@ struct Keys {
 };
 typedef struct Keys Keys;
 
-static Data mkfilekey(void);
+static void mkfilekey(uchar filekey[16]);
 static void usage(void);
 static void payload(uchar filekey[16], Ibuf *in, Obuf *out);
-static void passenc(Header *h, Data filekey);
-static void pubenc(Header *h, Data filekey, Keys *recs);
+static void passenc(Header *h, uchar filekey[16]);
+static void pubenc(Header *h, uchar filekey[16], Keys *recs);
 static void keyinit(Keys *keys);
 static void keyfree(Keys *keys);
 static void keynew(Keys *keys);
@@ -126,16 +126,11 @@ privadd(Keys *privs, char bech[74+1])
 	return ok;
 }
 
-static Data
-mkfilekey(void)
+static void
+mkfilekey(uchar filekey[16])
 {
-	Data k;
-
-	k.len = 16;
-	k.data = emalloc(k.len);
-	if(randombuf(k.data, k.len) == 0)
+	if(randombuf(filekey, 16) == 0)
 		errx(1, "failed to generate file key");
-	return k;
 }
 
 static void
@@ -157,7 +152,7 @@ payload(uchar filekey[16], Ibuf *in, Obuf *out)
 }
 
 static void
-passenc(Header *h, Data filekey)
+passenc(Header *h, uchar filekey[16])
 {
 	char *pass;
 
@@ -169,7 +164,7 @@ passenc(Header *h, Data filekey)
 }
 
 static void
-pubenc(Header *h, Data filekey, Keys *recs)
+pubenc(Header *h, uchar filekey[16], Keys *recs)
 {
 	size_t i;
 
@@ -312,13 +307,13 @@ static void
 encipher(Ibuf *in, Obuf *out, int ispass, Keys *recs)
 {
 	Header h;
-	Data filekey;
+	uchar filekey[16];
 	char mac[B64EBUFLEN(32)];
 	size_t maclen;
 
 	hdrinit(&h);
 	hdrappend(&h, "age-encryption.org/v1\n");
-	filekey = mkfilekey();
+	mkfilekey(filekey);
 	if(ispass)
 		passenc(&h, filekey);
 	else
@@ -329,12 +324,11 @@ encipher(Ibuf *in, Obuf *out, int ispass, Keys *recs)
 		write(out->fd, armorfirst, sizeof(armorfirst) - 1);
 	hdrappend(&h, " %s\n", mac);
 	bwrite(out, h.data, h.len);
-	payload(filekey.data, in, out);
+	payload(filekey, in, out);
 	bflush(out);
 	if(out->isarmor)
 		write(out->fd, armorlast, sizeof(armorlast) - 1);
-	explicit_bzero(filekey.data, filekey.len);
-	free(filekey.data);
+	explicit_bzero(filekey, sizeof(filekey));
 	free(h.data);
 }
 
@@ -344,16 +338,13 @@ validmac(Ibuf *in, uchar filekey[16], int *isvalid)
 	uchar mac1[32], mac2[32];
 	static const char *e;
 	uchar *data;
-	Data fk;
 	size_t len;
 
 	data = recstop(in, &len);
 	e = getmac(in, mac1);
 	if(e)
 		return e;
-	fk.data = filekey;
-	fk.len = 16;
-	mac(data, len, fk, mac2);
+	mac(data, len, filekey, mac2);
 	*isvalid = memcmp(mac1, mac2, 32) == 0;
 	return NULL;
 }

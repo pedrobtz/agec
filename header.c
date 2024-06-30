@@ -44,7 +44,7 @@ hdrappend(Header *h, char *fmt, ...)
 
 /* out length must be at least B64EBUFLEN(32) */
 void
-hdrmac(uchar *data, size_t len, Data filekey, char *out, size_t *outlen)
+hdrmac(uchar *data, size_t len, uchar filekey[16], char *out, size_t *outlen)
 {
 	uchar md[32];
 
@@ -53,11 +53,10 @@ hdrmac(uchar *data, size_t len, Data filekey, char *out, size_t *outlen)
 }
 
 void
-mac(uchar *data, size_t len, Data filekey, uchar out[32])
+mac(uchar *data, size_t len, uchar filekey[16], uchar out[32])
 {
 	uchar dk[32];
 
-	hkdfsha256(filekey.data, filekey.len, NULL, 0,
-			label, sizeof(label) - 1, dk);
+	hkdfsha256(filekey, 16, NULL, 0, label, sizeof(label) - 1, dk);
 	hmacsha256(dk, sizeof(dk), data, len, out);
 }

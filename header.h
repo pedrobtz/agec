@@ -13,7 +13,7 @@ struct Header {
 
 void hdrinit(Header *h);
 void hdrappend(Header *h, char *fmt, ...);
-void hdrmac(uchar *data, size_t len, Data filekey, char *out, size_t *outlen);
-void mac(uchar *data, size_t len, Data filekey, uchar out[32]);
+void hdrmac(uchar *data, size_t len, uchar filekey[16], char *out, size_t *outlen);
+void mac(uchar *data, size_t len, uchar filekey[16], uchar out[32]);
 
 #endif /* HEADER_H */

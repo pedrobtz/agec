@@ -18,14 +18,14 @@
 #define TAGLEN      16      /* poly1305 authentication tag */
 
 static void wrap(uchar out[32], uchar share[32], uchar secret[32], uchar pubkey[32]);
-static Data body(uchar share[32], uchar esecret[32], uchar pubkey[32], Data filekey);
+static void body(uchar share[32], uchar esecret[32], uchar pubkey[32], uchar filekey[16], uchar out[32]);
 
 void
-x25519stanza(Header *h, Data filekey, uchar pubkey[32])
+x25519stanza(Header *h, uchar filekey[16], uchar pubkey[32])
 {
 	uchar esecret[32], share[32];
-	uchar b64share[B64EBUFLEN(sizeof(share))], *b64body;
-	Data b;
+	uchar b64share[B64EBUFLEN(sizeof(share))];
+	uchar b[32], b64body[B64EBUFLEN(32)];
 	size_t outlen;
 	int ok;
 
@@ -37,29 +37,24 @@ x25519stanza(Header *h, Data filekey, uchar pubkey[32])
 		errx(1, "x25519: internal failure");
 	base64encode(share, b64share, sizeof share, &outlen, 0);
 	hdrappend(h, "-> X25519 %s\n", b64share);
-	b = body(share, esecret, pubkey, filekey);
-	b64body = emalloc(B64EBUFLEN(b.len));
-	base64encode(b.data, b64body, b.len, &outlen, 0);
+	body(share, esecret, pubkey, filekey, b);
+	base64encode(b, b64body, 32, &outlen, 0);
 	hdrappend(h, "%s\n", b64body);
-	free(b64body);
-	free(b.data);
 	explicit_bzero(esecret, sizeof esecret);
 }
 
-static Data
-body(uchar share[32], uchar esecret[32], uchar pubkey[32], Data filekey)
+static void
+body(uchar share[32], uchar esecret[32], uchar pubkey[32], uchar filekey[16], uchar out[32])
 {
 	uchar secret[32], wrapkey[32];
-	Data body;
 	int ok;
 
 	ok = x25519(secret, esecret, pubkey);
 	if(!ok)
 		errx(1, "x25519: internal failure");
 	wrap(wrapkey, share, secret, pubkey);
-	body = keyenc(wrapkey, filekey);
+	keyenc(wrapkey, filekey, out);
 	explicit_bzero(secret, sizeof secret);
-	return body;
 }
 
 static void

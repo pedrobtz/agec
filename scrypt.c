@@ -19,11 +19,11 @@
 static const char label[] = "age-encryption.org/v1/scrypt";
 
 static void catlabel(uchar *s);
-static void stanza(Header *h, Data filekey, char *pass, uchar *salt);
+static void stanza(Header *h, uchar filekey[16], char *pass, uchar *salt);
 static void wrapkey(uchar key[32], char *pass, uchar *salt, unsigned factor);
 
 void
-scryptstanza(Header *h, Data filekey, char *pass)
+scryptstanza(Header *h, uchar filekey[16], char *pass)
 {
 	uchar salt[SALTLEN + sizeof(label) - 1];
 
@@ -33,25 +33,20 @@ scryptstanza(Header *h, Data filekey, char *pass)
 }
 
 static void
-stanza(Header *h, Data filekey, char *pass, uchar *salt)
+stanza(Header *h, uchar filekey[16], char *pass, uchar *salt)
 {
-	uchar b64salt[B64EBUFLEN(SALTLEN)], *b64body;
+	uchar b64salt[B64EBUFLEN(SALTLEN)];
 	uchar key[32];
-	Data body;
+	uchar body[32], b64body[B64EBUFLEN(32)];
 	size_t outlen;
 
 	base64encode(salt, b64salt, SALTLEN, &outlen, 0);
 	catlabel(salt);
 	wrapkey(key, pass, salt, COST);
-	body = keyenc(key, filekey);
-	b64body = emalloc(B64EBUFLEN(body.len));
-	base64encode(body.data, b64body, body.len, &outlen, 0);
-	if(b64body == NULL)
-		err(1, "scrypt: failed to convert to base64");
+	keyenc(key, filekey, body);
+	base64encode(body, b64body, 32, &outlen, 0);
 	hdrappend(h, "-> scrypt %s %d\n", b64salt, COST);
 	hdrappend(h, "%s\n", b64body);
-	free(body.data);
-	free(b64body);
 }
 
 static void
