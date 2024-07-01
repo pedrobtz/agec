@@ -1,4 +1,3 @@
-#include <err.h>
 #include <errno.h>
 #include <stdio.h>
 #include <string.h>
@@ -15,7 +14,7 @@
 #define TAGLEN   16      /* poly1305 authentication tag */
 
 static int eof(Ibuf *b);
-static void incnonce(uchar nonce[12]);
+static const char *incnonce(uchar nonce[12]);
 static size_t encchunk(Data in, uchar key[32], uchar nonce[12], uchar *out);
 static size_t decchunk(Data in, uchar key[32], uchar nonce[12], uchar *out);
 
@@ -33,19 +32,22 @@ plencrypt(Ibuf *in, Obuf *out, uchar plkey[32])
 	uchar inbuf[CHUNKLEN], outbuf[CHUNKLEN + TAGLEN];
 	uchar nonce[12] = {0};
 	Data ichunk;
+	const char *e;
 	size_t outlen;
 	ssize_t nr, nw;
 	int last;
 
 	outlen = sizeof(outbuf);
 	ichunk.data = inbuf;
-	for(last = 0; !last; incnonce(nonce)) {
+	for(last = 0; !last; e = incnonce(nonce)) {
+		if(e)
+			return e;
 		nr = bread(in, inbuf, CHUNKLEN);
 		if(nr == -1)
-			return strerror(errno);
+			return ioerror(errno);
 		last = eof(in);
 		if(last == -1)
-			return strerror(errno);
+			return ioerror(errno);
 		ichunk.len = nr;
 		if(last)
 			nonce[11] = 1;
@@ -74,7 +76,7 @@ eof(Ibuf *b)
 		return 0;
 }
 
-static void
+static const char *
 incnonce(uchar nonce[12])
 {
 	int i;
@@ -84,8 +86,9 @@ incnonce(uchar nonce[12])
 		if(nonce[i] != 0)
 			break;
 		if(i == 0)
-			errx(1, "payload is too long; chunk counter wrapped");
+			return "payload is too long; chunk counter wrapped";
 	}
+	return NULL;
 }
 
 static size_t
@@ -105,22 +108,27 @@ pldecrypt(Ibuf *in, Obuf *out, uchar plkey[32])
 	uchar outbuf[CHUNKLEN + TAGLEN], inbuf[CHUNKLEN + TAGLEN];
 	uchar nonce[12] = {0};
 	Data ichunk;
+	const char *e = NULL;
 	size_t outlen;
 	ssize_t nr, nw;
 	int last;
 
 	ichunk.data = inbuf;
-	for(last = 0; !last; incnonce(nonce)) {
+	for(last = 0; !last; e = incnonce(nonce)) {
+		if(e)
+			return e;
 		nr = bread(in, inbuf, sizeof(inbuf));
 		if(nr == -1)
-			return strerror(errno);
+			return ioerror(errno);
 		last = eof(in);
 		if(last == -1)
-			return strerror(errno);
+			return ioerror(errno);
 		ichunk.len = nr;
 		if(last)
 			nonce[11] = 1;
 		outlen = decchunk(ichunk, plkey, nonce, outbuf);
+		if(outlen == ~(size_t)0)
+			return ioerror(errno);
 		nw = bwrite(out, outbuf, outlen);
 		if(nw == -1)
 			return strerror(errno);
@@ -128,7 +136,6 @@ pldecrypt(Ibuf *in, Obuf *out, uchar plkey[32])
 	return NULL;
 }
 
-/* TODO: return error instead of aborting */
 static size_t
 decchunk(Data in, uchar key[32], uchar nonce[12], uchar *out)
 {
@@ -137,8 +144,10 @@ decchunk(Data in, uchar key[32], uchar nonce[12], uchar *out)
 
 	chacha20poly1305init(&ctx, key, nonce);
 	fail = chacha20poly1305read(&ctx, out, NULL, 0, in.data, in.len);
-	if(fail)
-		errx(1, "failed to decrypt and authenticate payload");
+	if(fail) {
+		errno = EDECRYPT;
+		return ~(size_t)0;
+	}
 	explicit_bzero(&ctx, sizeof(ctx));
 	return in.len - TAGLEN;
 }
@@ -163,6 +172,7 @@ ssize_t
 plread(Ebuf *b, void *buf, size_t nbytes)
 {
 	Data ichunk;
+	const char *e;
 	size_t orig = nbytes, c, rest;
 	ssize_t nr;
 	int last;
@@ -187,7 +197,13 @@ plread(Ebuf *b, void *buf, size_t nbytes)
 				return 0;
 			ichunk.len = nr;
 			b->size = decchunk(ichunk, b->key, b->nonce, b->obuf);
-			incnonce(b->nonce);
+			if(b->size == ~(size_t)0)
+				return -1;
+			e = incnonce(b->nonce);
+			if(e) {
+				errno = EOVERFLOW;
+				return -1;
+			}
 		}
 		rest = b->size - b->cur;
 		c = (rest > nbytes) ? nbytes : rest;
@@ -203,6 +219,7 @@ ssize_t
 plpeek(Ebuf *b, char *c)
 {
 	Data ichunk;
+	const char *e;
 	int last;
 	ssize_t nr;
 
@@ -224,7 +241,13 @@ plpeek(Ebuf *b, char *c)
 		b->nonce[11] = 1;
 	ichunk.len = nr;
 	b->size = decchunk(ichunk, b->key, b->nonce, b->obuf);
-	incnonce(b->nonce);
+	if(b->size == 0)
+		return -1;
+	e = incnonce(b->nonce);
+	if(e) {
+		errno = EOVERFLOW;
+		return -1;
+	}
 	*c = b->obuf[0];
 	return 1;
 }

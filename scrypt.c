@@ -1,9 +1,7 @@
-#include <err.h>
 #include <stdarg.h>
+#include <stdint.h>
 #include <stdio.h>
 #include <string.h>
-#include <openssl/err.h>
-#include <openssl/evp.h>
 
 #include "common.h"
 #include "crypto.h"
@@ -19,37 +17,47 @@
 static const char label[] = "age-encryption.org/v1/scrypt";
 
 static void catlabel(uchar *s);
-static void stanza(Header *h, uchar filekey[16], char *pass, uchar *salt);
-static void wrapkey(uchar key[32], char *pass, uchar *salt, unsigned factor);
+static const char *stanza(Header *h, uchar filekey[16], char *pass, uchar *salt);
+static const char *wrapkey(uchar key[32], char *pass, uchar *salt, unsigned factor);
 
-void
+const char *
 scryptstanza(Header *h, uchar filekey[16], char *pass)
 {
 	uchar salt[SALTLEN + sizeof(label) - 1];
+	int ok;
 
-	if(randombuf(salt, SALTLEN) == 0)
-		errx(1, "scrypt: failed to generate salt");
-	stanza(h, filekey, pass, salt);
+	ok = randombuf(salt, SALTLEN);
+	if(!ok)
+		return "scrypt: failed to generate salt";
+	return stanza(h, filekey, pass, salt);
 }
 
-static void
+static const char *
 stanza(Header *h, uchar filekey[16], char *pass, uchar *salt)
 {
 	uchar b64salt[B64EBUFLEN(SALTLEN)];
 	uchar key[32];
 	uchar body[32], b64body[B64EBUFLEN(32)];
+	const char *e;
 	size_t outlen;
 
 	base64encode(salt, b64salt, SALTLEN, &outlen, 0);
 	catlabel(salt);
-	wrapkey(key, pass, salt, COST);
+	e = wrapkey(key, pass, salt, COST);
+	if(e)
+		return e;
 	keyenc(key, filekey, body);
 	base64encode(body, b64body, 32, &outlen, 0);
-	hdrappend(h, "-> scrypt %s %d\n", b64salt, COST);
-	hdrappend(h, "%s\n", b64body);
+	e = hdrappend(h, "-> scrypt %s %d\n", b64salt, COST);
+	if(e)
+		return e;
+	e = hdrappend(h, "%s\n", b64body);
+	if(e)
+		return e;
+	return NULL;
 }
 
-static void
+static const char *
 wrapkey(uchar key[32], char *pass, uchar *salt, unsigned factor)
 {
 	const char *e;
@@ -58,8 +66,8 @@ wrapkey(uchar key[32], char *pass, uchar *salt, unsigned factor)
 			salt, SALTLEN + sizeof(label) - 1,
 			1<<factor, 8, 1, key, 32);
 	if(e)
-		errx(1, "scrypt: %s", e);
-		
+		return ewrap("scrypt", e);
+	return NULL;
 }
 
 static void
@@ -73,7 +81,7 @@ catlabel(uchar *s)
 }
 
 int
-scryptgetkey(uchar k[16], Scryptarg *arg, char *pass)
+scryptgetkey(uchar k[16], Scryptarg *arg, char *pass, const char **err)
 {
 	uchar salt[SALTLEN + sizeof(label) - 1];
 	uchar wk[32];
@@ -81,7 +89,9 @@ scryptgetkey(uchar k[16], Scryptarg *arg, char *pass)
 
 	memcpy(salt, arg->salt, SALTLEN);
 	catlabel(salt);
-	wrapkey(wk, pass, salt, arg->cost);
+	*err = wrapkey(wk, pass, salt, arg->cost);
+	if(*err)
+		return 0;
 	ok = keydec(wk, arg->body, k);
 	if(!ok)
 		return 0;

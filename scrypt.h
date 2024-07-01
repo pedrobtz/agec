@@ -9,5 +9,5 @@ struct Scryptarg {
 	int cost;
 };
 
-void scryptstanza(Header *h, uchar filekey[16], char *pass);
-int scryptgetkey(uchar k[16], Scryptarg *arg, char *pass);
+const char *scryptstanza(Header *h, uchar filekey[16], char *pass);
+int scryptgetkey(uchar k[16], Scryptarg *arg, char *pass, const char **err);

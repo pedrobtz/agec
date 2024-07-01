@@ -1,5 +1,6 @@
 #include <assert.h>
-#include <err.h>
+#include <errno.h>
+#include <stdlib.h>
 #include <string.h>
 #include <unistd.h>
 
@@ -12,7 +13,7 @@
 
 static ssize_t awrite(Obuf *b, void *buf, size_t nbytes);
 static ssize_t aflush(Obuf *b);
-static void recappend(Record *rec, void *buf, size_t len);
+static void recappend(Ibuf *b, void *buf, size_t len);
 static ssize_t readall(int fd, void *buf, size_t nbytes);
 static int isarmor(Ibuf *b);
 static int endcheck(uchar *buf, size_t len, int *endpos);
@@ -127,7 +128,7 @@ isarmor(Ibuf *b)
 	assert(sizeof(armorfirst) - 1 < IOBUFSIZE);
 	nr = readall(b->fd, b->buf, sizeof(armorfirst) - 1);
 	if(nr == -1)
-		err(1, "failed to read input");
+		return -1;
 	b->size = nr;
 	if((size_t)nr < sizeof(armorfirst) - 1)
 		return 0;
@@ -139,7 +140,7 @@ isarmor(Ibuf *b)
 	}
 }
 
-void
+const char *
 ibinit(Ibuf *b, int fd)
 {
 	b->size = b->cur = 0;
@@ -147,9 +148,13 @@ ibinit(Ibuf *b, int fd)
 	b->eof = 0;
 	b->fd = fd;
 	b->recording = 1;
+	b->recfail = 0;
 	b->rec.len = b->rec.capacity = 0;
 	b->isarmor = 0;
 	b->isarmor = isarmor(b);
+	if(b->isarmor == -1)
+		return strerror(errno);
+	return NULL;
 }
 
 void
@@ -174,7 +179,7 @@ bread(Ibuf *b, void *buf, size_t nbytes)
 	while(nbytes > 0) {
 		if(b->cur == b->size) {
 			if(b->recording && b->size > 0)
-				recappend(&b->rec, b->buf, b->size);
+				recappend(b, b->buf, b->size);
 			b->cur = b->size = 0;
 		}
 		if(b->size == 0) {
@@ -184,9 +189,10 @@ bread(Ibuf *b, void *buf, size_t nbytes)
 				nr = read(b->fd, b->buf, IOBUFSIZE);
 			if(nr == -1)
 				return -1;
-			if(nr == -2)
-				errx(1, "failed to read input: "
-					"armor format error");
+			if(nr == -2) {
+				errno = EBADARMOR;
+				return -1;
+			}
 			if(nr == 0) {
 				b->eof = 1;
 				return orig - nbytes;
@@ -325,7 +331,7 @@ bpeek(Ibuf *b, char *c)
 		return 1;
 	}
 	if(b->recording && b->size > 0)
-		recappend(&b->rec, b->buf, b->size);
+		recappend(b, b->buf, b->size);
 	b->cur = b->size = 0;
 	if(b->isarmor)
 		nr = aread(b, b->buf, IOBUFSIZE);
@@ -343,40 +349,65 @@ bpeek(Ibuf *b, char *c)
 }
 
 static void
-recappend(Record *rec, void *buf, size_t len)
+recappend(Ibuf *b, void *buf, size_t len)
 {
 	size_t cap, ncap;
 
-	if(len > 0 && rec->capacity == 0) {
-		rec->buf = emalloc(RECINITLEN);
-		rec->capacity = RECINITLEN;
+	if(b->recfail)
+		return;
+	if(len > 0 && b->rec.capacity == 0) {
+		b->rec.buf = malloc(RECINITLEN);
+		if(b->rec.buf == NULL) {
+			b->recfail = ENOMEM;
+			return;
+		}
+		b->rec.capacity = RECINITLEN;
 	}
-	if(rec->len + len > rec->capacity) {
-		cap = ncap = rec->capacity;
-		while(rec->len + len > ncap) {
+	if(b->rec.len + len > b->rec.capacity) {
+		cap = ncap = b->rec.capacity;
+		while(b->rec.len + len > ncap) {
 			ncap *= 2;
-			if(ncap < cap)	/* overflow */
-				errx(1, "failed to reallocate record buffer: "
-					"overflow");
+			if(ncap < cap) {
+				b->recfail = EOVERFLOW;
+				return;
+			}
 			cap = ncap;
 		}
-		rec->buf = erealloc(rec->buf, ncap);
-		rec->capacity = ncap;
+		b->rec.buf = realloc(b->rec.buf, ncap);
+		if(b->rec.buf == NULL) {
+			b->recfail = ENOMEM;
+			return;
+		}
+		b->rec.capacity = ncap;
 	}
-	memcpy(rec->buf + rec->len, buf, len);
-	rec->len += len;
+	memcpy(b->rec.buf + b->rec.len, buf, len);
+	b->rec.len += len;
 }
 
 uchar *
 recstop(Ibuf *b, size_t *len)
 {
 	b->recording = 0;
+	if(b->recfail) {
+		errno = b->recfail;
+		return NULL;
+	}
 	if(b->rec.capacity == 0) {
 		*len = b->cur;
 		return b->buf;
 	} else {
-		recappend(&b->rec, b->buf, b->cur);
+		recappend(b, b->buf, b->cur);
 		*len = b->rec.len;
 		return b->rec.buf;
 	}
+}
+
+const char *
+ioerror(int errn)
+{
+	if(errn == EBADARMOR)
+		return "armor format error";
+	else if(errn == EDECRYPT)
+		return "failed to decrypt and authenticate payload";
+	return strerror(errn);
 }

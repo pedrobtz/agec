@@ -1,5 +1,4 @@
 #include <assert.h>
-#include <err.h>
 #include <stdint.h>
 #include <string.h>
 
@@ -17,44 +16,58 @@
 #define BECHPRIVLEN 74
 #define TAGLEN      16      /* poly1305 authentication tag */
 
-static void wrap(uchar out[32], uchar share[32], uchar secret[32], uchar pubkey[32]);
-static void body(uchar share[32], uchar esecret[32], uchar pubkey[32], uchar filekey[16], uchar out[32]);
+static const char *ezeroresult = "x25519 internal failure";
 
-void
+static void wrap(uchar out[32], uchar share[32], uchar secret[32], uchar pubkey[32]);
+static const char *body(uchar share[32], uchar esecret[32], uchar pubkey[32], uchar filekey[16], uchar out[32]);
+
+const char *
 x25519stanza(Header *h, uchar filekey[16], uchar pubkey[32])
 {
 	uchar esecret[32], share[32];
 	uchar b64share[B64EBUFLEN(sizeof(share))];
 	uchar b[32], b64body[B64EBUFLEN(32)];
+	const char *e = NULL;
 	size_t outlen;
 	int ok;
 
 	ok = randombuf(esecret, sizeof esecret);
 	if(!ok)
-		errx(1, "x25519: failed to generate ephemeral secret");
+		return "failed to generate ephemeral secret";
 	ok = x25519(share, esecret, curve25519basepoint);
-	if(!ok)
-		errx(1, "x25519: internal failure");
+	if(!ok) {
+		e = ezeroresult;
+		goto out;
+	}
 	base64encode(share, b64share, sizeof share, &outlen, 0);
-	hdrappend(h, "-> X25519 %s\n", b64share);
-	body(share, esecret, pubkey, filekey, b);
+	e = hdrappend(h, "-> X25519 %s\n", b64share);
+	if(e)
+		goto out;
+	e = body(share, esecret, pubkey, filekey, b);
+	if(e)
+		goto out;
 	base64encode(b, b64body, 32, &outlen, 0);
-	hdrappend(h, "%s\n", b64body);
+	e = hdrappend(h, "%s\n", b64body);
+out:
 	explicit_bzero(esecret, sizeof esecret);
+	return e;
 }
 
-static void
+static const char *
 body(uchar share[32], uchar esecret[32], uchar pubkey[32], uchar filekey[16], uchar out[32])
 {
 	uchar secret[32], wrapkey[32];
 	int ok;
 
 	ok = x25519(secret, esecret, pubkey);
-	if(!ok)
-		errx(1, "x25519: internal failure");
+	if(!ok) {
+		explicit_bzero(secret, sizeof(secret));
+		return ezeroresult;
+	}
 	wrap(wrapkey, share, secret, pubkey);
 	keyenc(wrapkey, filekey, out);
 	explicit_bzero(secret, sizeof secret);
+	return NULL;
 }
 
 static void
@@ -110,17 +123,21 @@ x25519privkey(char bech[74+1], uchar privkey[32])
 }
 
 int
-x25519getkey(uchar k[16], X25519arg *arg, uchar privkey[32])
+x25519getkey(uchar k[16], X25519arg *arg, uchar privkey[32], const char **err)
 {
 	uchar secret[32], pubkey[32], wrapkey[32];
 	int ok;
 
 	ok = x25519(secret, privkey, arg->share);
-	if(!ok)
-		errx(1, "x25519: failed to compute");
+	if(!ok) {
+		*err = ezeroresult;
+		return 0;
+	}
 	ok = x25519pub(pubkey, privkey);
-	if(!ok)
-		errx(1, "x25519: internal failure");
+	if(!ok) {
+		*err = ezeroresult;
+		return 0;
+	}
 	wrap(wrapkey, arg->share, secret, pubkey);
 	return keydec(wrapkey, arg->body, k);
 }

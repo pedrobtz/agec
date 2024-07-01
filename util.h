@@ -1,5 +1,5 @@
-#include <stdlib.h>
-
-void *emalloc(size_t size);
-void *erealloc(void *p, size_t size);
-void *ereallocarr(void *p, size_t nmemb, size_t size);
+const char *ewrap(const char *outer, const char *inner);
+const char *esys(const char *outer);
+const char *efmt(const char *fmt, ...);
+void die(const char *msg);
+void *reallocarr(void *p, size_t nmemb, size_t size);

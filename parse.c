@@ -1,4 +1,3 @@
-#include <err.h>
 #include <errno.h>
 #include <stdlib.h>
 #include <string.h>
@@ -38,7 +37,7 @@ getversion(Ibuf *in)
 
 	nr = bread(in, buf, sizeof(buf));
 	if(nr == -1)
-		return strerror(errno);
+		return ioerror(errno);
 	if(nr != sizeof(buf))
 		return einval;
 	if(memcmp(buf, h, sizeof(buf)) != 0)
@@ -79,7 +78,7 @@ skipargline(Ibuf *b)
 	for(;;) {
 		nr = readc(b, &c);
 		if(nr == -1)
-			return strerror(errno);
+			return ioerror(errno);
 		if(nr == 0)
 			return einval;
 		if(prevspace && (c == ' ' || c == '\n'))
@@ -108,7 +107,7 @@ skipargbody(Ibuf *b)
 	for(;;) {
 		nr = readc(b, &c);
 		if(nr == -1)
-			return strerror(errno);
+			return ioerror(errno);
 		if(nr != 1)
 			return einval;
 		if(c == '\n') {
@@ -135,7 +134,7 @@ skipstanza(Ibuf *b)
 
 	nr = readc(b, &c);
 	if(nr == -1)
-		return strerror(errno);
+		return ioerror(errno);
 	if(nr != 1)
 		return einval;
 	if(c == ' ') {
@@ -160,7 +159,7 @@ getarg(Ibuf *b, char *dest, int maxlen, int *len, int *fullread)
 	while(*len <= maxlen) {
 		nr = bpeek(b, &c);
 		if(nr == -1)
-			return strerror(errno);
+			return ioerror(errno);
 		if(nr == 0)
 			return einval;
 		if(c == ' ' || c == '\n')
@@ -186,7 +185,7 @@ skiparg(Ibuf *b)
 	for(;;) {
 		nr = bpeek(b, &c);
 		if(nr == -1)
-			return strerror(errno);
+			return ioerror(errno);
 		if(nr == 0)
 			return einval;
 		if(c == ' ' || c == '\n')
@@ -212,7 +211,7 @@ getstanza(Ibuf *in, Stanza *s, int *end)
 
 	nr = bread(in, buf, 3);
 	if(nr == -1)
-		return strerror(errno);
+		return ioerror(errno);
 	if(nr != 3)
 		return einval;
 	*end = 0;
@@ -242,7 +241,7 @@ getstanza(Ibuf *in, Stanza *s, int *end)
 		goto unknown;
 	nr = readc(in, &c);
 	if(nr == -1)
-		return strerror(errno);
+		return ioerror(errno);
 	if(nr == 0 || c != ' ')
 		return einval;
 	if(s->type == SCRYPT)
@@ -290,7 +289,7 @@ scryptsalt(Ibuf *b, uchar out[16])
 
 	r = getb64seq(b, out, b64buf, 16, ' ');
 	if(r == -1)
-		return strerror(errno);
+		return ioerror(errno);
 	else if(r == 0)
 		return einval;
 	else
@@ -309,7 +308,7 @@ scryptcost(Ibuf *b, int *cost)
 	for(i = 0; i < sizeof(buf) - 1; i++) {
 		nr = readc(b, &c);
 		if(nr == -1)
-			return strerror(errno);
+			return ioerror(errno);
 		if(nr == 0)
 			return einval;
 		if(c == '\n')
@@ -333,7 +332,7 @@ scryptbody(Ibuf *b, uchar out[32])
 
 	r = getb64seq(b, out, b64buf, 32, '\n');
 	if(r == -1)
-		return strerror(errno);
+		return ioerror(errno);
 	else if(r == 0)
 		return "invalid scrypt body";
 	else
@@ -349,7 +348,7 @@ x25519share(Ibuf *b, uchar out[32])
 
 	r = getb64seq(b, out, b64buf, 32, '\n');
 	if(r == -1)
-		return strerror(errno);
+		return ioerror(errno);
 	else if(r == 0)
 		return einval;
 	else
@@ -365,7 +364,7 @@ x25519body(Ibuf *b, uchar out[32])
 
 	r = getb64seq(b, out, b64buf, 32, '\n');
 	if(r == -1)
-		return strerror(errno);
+		return ioerror(errno);
 	else if(r == 0)
 		return einval;
 	else
@@ -420,7 +419,7 @@ skipspace(Ibuf *b)
 
 	nr = readc(b, &c);
 	if(nr == -1)
-		return strerror(errno);
+		return ioerror(errno);
 	if(nr == 0 || c != ' ')
 		return "invalid header MAC";
 	return NULL;
@@ -438,7 +437,7 @@ getmac(Ibuf *in, uchar mac[32])
 		return e;
 	r = getb64seq(in, mac, b64buf, 32, '\n');
 	if(r == -1)
-		return strerror(errno);
+		return ioerror(errno);
 	else if(r == 0)
 		return "invalid header MAC";
 	return NULL;
@@ -451,7 +450,7 @@ getplnonce(Ibuf *in, uchar plnonce[16])
 
 	nr = bread(in, plnonce, 16);
 	if(nr == -1)
-		return strerror(errno);
+		return ioerror(errno);
 	if(nr < 16)
 		return "payload nonce is too short";
 	return NULL;
