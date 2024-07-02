@@ -398,7 +398,7 @@ getb64seq(Ibuf *b, uchar *out, uchar *buf, size_t rawlen, char term)
 			return 0;
 		buf[i] = c;
 	}
-	if(i == B64EBUFLEN(32)) {
+	if(i == B64EBUFLEN(rawlen)) {
 		nr = readc(b, &c);
 		if(nr == -1)
 			return -1;
