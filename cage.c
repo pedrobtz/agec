@@ -30,6 +30,12 @@ struct Keys {
 };
 typedef struct Keys Keys;
 
+struct Opts {
+	int isarmor, dflag, pflag;
+	const char *idpath;
+};
+typedef struct Opts Opts;
+
 static const char *mkfilekey(uchar filekey[16]);
 static void usage(void);
 static const char *payload(uchar filekey[16], Ibuf *in, Obuf *out);
@@ -44,13 +50,20 @@ static ssize_t skipline(void *b, int encrypted);
 static ssize_t getkey(void *b, Keys *privs, int encrypted, const char **err);
 static int checkencrypted(Ibuf *ib, Ebuf *eb, const char **err);
 static const char *matchscrypt(Ibuf *ib, Stanza *s);
-static const char *readprivkeys(Keys *privs, const char *path);
+static const char *readprivkeys(void *b, Keys *privs, int encrypted);
+static const char *getprivkeys(Keys *privs, const char *path);
+static const char *genhdr(Header *h, uchar filekey[16], int ispass, Keys *recs);
+ssize_t writeall(int fd, const void *buf, size_t nbytes);
+static const char *writehdr(Obuf *out, Header *h);
 static const char *encipher(Ibuf *in, Obuf *out, int ispass, Keys *recs);
 static const char *validmac(Ibuf *in, uchar filekey[16], int *isvalid);
 static const char *validatemac(Ibuf *in, uchar filekey[16]);
 static const char *scryptkey(uchar filekey[16], Stanza *s);
+static const char *findx25519(uchar filekey[16], Stanza *s, Keys *ids, int *found);
 static const char *match(Ibuf *in, uchar filekey[16], Stanza *s, Keys *ids, int *found);
 static const char *decipher(Ibuf *in, Obuf *out, Keys *ids);
+static int getopts(int argc, char **argv, Keys *recs, Opts *opts);
+static int validopts(Opts *opts, Keys *recs);
 
 char *argv0;
 static const char armorfirst[] = "-----BEGIN AGE ENCRYPTED FILE-----\n";
@@ -230,8 +243,10 @@ getkey(void *b, Keys *privs, int encrypted, const char **err)
 	if(nr != 74)
 		return -2;
 	nr = encrypted ? plread((Ebuf *)b, &c, 1) : bread((Ibuf *)b, &c, 1);
-	if(nr == -1)
+	if(nr == -1) {
+		*err = ioerror(errno);
 		return -1;
+	}
 	if(nr == 1 && c != '\n')
 		return -2;
 	*err = NULL;
@@ -244,17 +259,46 @@ getkey(void *b, Keys *privs, int encrypted, const char **err)
 }
 
 static const char *
-readprivkeys(Keys *privs, const char *path)
+readprivkeys(void *b, Keys *privs, int encrypted)
 {
-	int fd;
-	Ibuf ib;
-	Ebuf eb;
-	void *in = &ib;
 	const char *e;
 	ssize_t nr;
 	int lineno;
 	char c;
-	int encrypted = 0;
+
+	for(lineno = 1; ; lineno++) {
+		nr = encrypted ? plpeek((Ebuf *)b, &c) : bpeek((Ibuf *)b, &c);
+		if(nr == -1)
+			return ioerror(errno);
+		if(nr == 0)
+			break;
+		if(c == '#') {
+			nr = skipline(b, encrypted);
+			if(nr == -1)
+				return ioerror(errno);
+			if(nr == 0)
+				break;
+			continue;
+		}
+		nr = getkey(b, privs, encrypted, &e);
+		if(e)
+			return e;
+		if(nr == -2)
+			return efmt("invalid private key at line %d", lineno);
+		if(nr == 0)
+			break;
+	}
+	return NULL;
+}
+
+static const char *
+getprivkeys(Keys *privs, const char *path)
+{
+	Ibuf ib;
+	Ebuf eb;
+	void *in = &ib;
+	const char *e;
+	int fd, encrypted = 0;
 
 	fd = open(path, O_RDONLY);
 	if(fd == -1)
@@ -269,39 +313,9 @@ readprivkeys(Keys *privs, const char *path)
 		goto out;
 	if(encrypted)
 		in = &eb;
-	for(lineno = 1; ; lineno++) {
-		nr = encrypted ? plpeek(&eb, &c) : bpeek(&ib, &c);
-		if(nr == -1) {
-			e = ewrap("failed to read key file", ioerror(errno));
-			goto out;
-		}
-		if(nr == 0)
-			break;
-		if(c == '#') {
-			nr = skipline(in, encrypted);
-			if(nr == -1) {
-				e = ewrap("failed to read key file",
-						ioerror(errno));
-				goto out;
-			}
-			if(nr == 0)
-				break;
-			continue;
-		}
-		nr = getkey(in, privs, encrypted, &e);
-		if(e)
-			goto out;
-		if(nr == -1) {
-			e = ewrap("failed to read key file", ioerror(errno));
-			goto out;
-		}
-		if(nr == -2) {
-			e = efmt("invalid private key at line %d", lineno);
-			goto out;
-		}
-		if(nr == 0)
-			break;
-	}
+	e = readprivkeys(in, privs, encrypted);
+	if(e)
+		e = ewrap("failed to read key file", e);
 out:
 	if(encrypted)
 		plfree(&eb);
@@ -377,42 +391,102 @@ matchscrypt(Ibuf *ib, Stanza *s)
 }
 
 static const char *
+genhdr(Header *h, uchar filekey[16], int ispass, Keys *recs)
+{
+	char mac[B64EBUFLEN(32)];
+	const char *e;
+	size_t maclen;
+
+	e = hdrappend(h, "age-encryption.org/v1\n");
+	if(e)
+		return e;
+	e = ispass ? passenc(h, filekey) : pubenc(h, filekey, recs);
+	if(e)
+		return e;
+	e = hdrappend(h, "---");
+	if(e)
+		return e;
+	hdrmac(h->data, h->len, filekey, mac, &maclen);
+	e = hdrappend(h, " %s\n", mac);
+	if(e)
+		return e;
+	return NULL;
+}
+
+ssize_t
+writeall(int fd, const void *buf, size_t nbytes)
+{
+	size_t off;
+	ssize_t nw;
+
+	for(off = 0; off < nbytes; off += nw) {
+		nw = write(fd, (char *)buf + off, nbytes - off);
+		if(nw <= 0)
+			return -1;
+	}
+	return nbytes;
+}
+
+static const char *
+writehdr(Obuf *out, Header *h)
+{
+	ssize_t nw;
+
+	if(out->isarmor) {
+		nw = writeall(out->fd, armorfirst, sizeof(armorfirst) - 1);
+		if(nw == -1)
+			return strerror(errno);
+	}
+	nw = bwrite(out, h->data, h->len);
+	if(nw == -1)
+		return strerror(errno);
+	return NULL;
+}
+
+static const char *
+writebody(Obuf *out, Ibuf *in, uchar filekey[16])
+{
+	const char *e;
+	ssize_t nw;
+
+	e = payload(filekey, in, out);
+	if(e)
+		return e;
+	bflush(out);
+	if(out->isarmor) {
+		nw = writeall(out->fd, armorlast, sizeof(armorlast) - 1);
+		if(nw == -1)
+			return strerror(errno);
+	}
+	return NULL;
+}
+
+static const char *
 encipher(Ibuf *in, Obuf *out, int ispass, Keys *recs)
 {
 	Header h;
 	uchar filekey[16];
-	char mac[B64EBUFLEN(32)];
 	const char *e;
-	size_t maclen;
 
 	e = mkfilekey(filekey);
 	if(e)
 		return e;
 	e = hdrinit(&h);
+	if(e)
+		return ewrap("failed to generate header", e);
+	e = genhdr(&h, filekey, ispass, recs);
 	if(e) {
 		e = ewrap("failed to generate header", e);
 		goto out;
 	}
-	hdrappend(&h, "age-encryption.org/v1\n");
-	e = ispass ? passenc(&h, filekey) : pubenc(&h, filekey, recs);
-	if(e) {
-		e = ewrap("failed to generate header", e);
-		goto out;
-	}
-	hdrappend(&h, "---");
-	hdrmac(h.data, h.len, filekey, mac, &maclen);
-	if(out->isarmor)
-		write(out->fd, armorfirst, sizeof(armorfirst) - 1);
-	hdrappend(&h, " %s\n", mac);
-	bwrite(out, h.data, h.len);
-	e = payload(filekey, in, out);
+	e = writehdr(out, &h);
 	if(e) {
 		e = ewrap("failed to encrypt", e);
 		goto out;
 	}
-	bflush(out);
-	if(out->isarmor)
-		write(out->fd, armorlast, sizeof(armorlast) - 1);
+	e = writebody(out, in, filekey);
+	if(e)
+		e = ewrap("failed to encrypt", e);
 out:
 	explicit_bzero(filekey, sizeof(filekey));
 	free(h.data);
@@ -473,13 +547,26 @@ decipher(Ibuf *in, Obuf *out, Keys *ids)
 	return NULL;
 }
 
-/* filekey is filled only if X25519 id is found */
+static const char *
+findx25519(uchar filekey[16], Stanza *s, Keys *ids, int *found)
+{
+	const char *e = NULL;
+	size_t i;
+
+	for(i = 0; i < ids->len && !*found; i++) {
+		*found = x25519getkey(filekey, &s->x25519, ids->buf[i].r, &e);
+		if(e)
+			return e;
+	}
+	return NULL;
+}
+
+/* filekey is filled only if and only if X25519 id is found */
 static const char *
 match(Ibuf *in, uchar filekey[16], Stanza *s, Keys *ids, int *found)
 {
 	const char *e;
 	int end, seenscrypt, n;
-	unsigned i;
 
 	for(n = seenscrypt = *found = 0;; n++) {
 		e = getstanza(in, s, &end);
@@ -490,14 +577,9 @@ match(Ibuf *in, uchar filekey[16], Stanza *s, Keys *ids, int *found)
 		if(s->type == SCRYPT) {
 			seenscrypt = *found = 1;
 		} else if(s->type == X25519 && !*found) {
-			for(i = 0; i < ids->len && !*found; i++) {
-				*found = x25519getkey(filekey, &s->x25519,
-						ids->buf[i].r, &e);
-				if(e) {
-					return ewrap("failed to match identity",
-							e);
-				}
-			}
+			e = findx25519(filekey, s, ids, found);
+			if(e)
+				return ewrap("failed to match identity", e);
 		}
 	}
 	if(n > 1 && seenscrypt)
@@ -540,55 +622,82 @@ validatemac(Ibuf *in, uchar filekey[16])
 	return NULL;
 }
 
+static int
+getopts(int argc, char **argv, Keys *recs, Opts *opts)
+{
+	const char *e;
+	int ch;
+
+	memset(opts, 0, sizeof(*opts));
+	while((ch = getopt(argc, argv, "adi:pr:")) != -1) {
+		switch(ch) {
+		case 'a':
+			opts->isarmor = 1;
+			break;
+		case 'd':
+			opts->dflag = 1;
+			break;
+		case 'i':
+			if(opts->idpath) {
+				keyfree(recs);
+				usage();
+			}
+			opts->idpath = optarg;
+			break;
+		case 'p':
+			opts->pflag = 1;
+			break;
+		case 'r':
+			e = recadd(recs, optarg);
+			if(e) {
+				keyfree(recs);
+				die(e);
+			}
+			break;
+		default:
+			keyfree(recs);
+			usage();
+		}
+	}
+	return optind;
+}
+
+static int
+validopts(Opts *opts, Keys *recs)
+{
+	if(opts->dflag) {
+		if(opts->pflag || recs->len > 0 || opts->isarmor)
+			return 0;
+	} else {
+		if(opts->pflag && recs->len > 0)
+			return 0;
+		if(!opts->pflag && recs->len == 0)
+			return 0;
+		if(opts->idpath)
+			return 0;
+	}
+	return 1;
+}
+
 int
 main(int argc, char *argv[])
 {
 	Ibuf ib;
 	Obuf ob;
+	Opts opts;
 	Keys recs, ids;
-	int pflag = 0, dflag = 0;
-	const char *idpath = NULL, *e = NULL;
-	int ch, fd;
+	const char *e = NULL;
+	int optshift, fd;
 
 	argv0 = argv[0] ? argv[0] : "cage";
 	e = keyinit(&recs);
 	if(e)
 		die(e);
-	ob.isarmor = 0;
-	while((ch = getopt(argc, argv, "adi:pr:")) != -1) {
-		switch(ch) {
-		case 'a':
-			ob.isarmor = 1;
-			break;
-		case 'd':
-			dflag = 1;
-			break;
-		case 'i':
-			if(idpath) {
-				keyfree(&recs);
-				usage();
-			}
-			idpath = optarg;
-			break;
-		case 'p':
-			pflag = 1;
-			break;
-		case 'r':
-			e = recadd(&recs, optarg);
-			if(e)
-				goto out;
-			break;
-		default:
-			keyfree(&recs);
-			usage();
-		}
-	}
-	argc -= optind;
-	argv += optind;
-	if(!dflag && pflag && recs.len > 0)
-		goto earlybadusage;
-	if(!dflag && !pflag && recs.len == 0)
-		goto earlybadusage;
+	optshift = getopts(argc, argv, &recs, &opts);
+	if(!validopts(&opts, &recs))
+		goto badusage;
+	argc -= optshift;
+	argv += optshift;
 	if(argc == 1) {
 		fd = open(argv[0], O_RDONLY);
 		if(fd == -1) {
@@ -605,24 +714,21 @@ main(int argc, char *argv[])
 		goto out;
 	ob.cur = 0;
 	ob.fd = 1;
-	if(dflag) {
-		if(pflag || recs.len || ob.isarmor)
-			goto badusage;
-		if(idpath) {
+	ob.isarmor = opts.isarmor;
+	if(opts.dflag) {
+		if(opts.idpath) {
 			e = keyinit(&ids);
 			if(e)
 				goto out;
-			e = readprivkeys(&ids, idpath);
+			e = getprivkeys(&ids, opts.idpath);
 			if(e)
 				goto out;
 		}
 		e = decipher(&ib, &ob, &ids);
-		if(idpath)
+		if(opts.idpath)
 			keyfree(&ids);
 	} else {
-		if(idpath)
-			goto badusage;
-		e = encipher(&ib, &ob, pflag, &recs);
+		e = encipher(&ib, &ob, opts.pflag, &recs);
 	}
 out:
 	explicit_bzero(&ob, sizeof(ob));
@@ -632,8 +738,6 @@ out:
 		die(e);
 	return 0;
 badusage:
-	ibfree(&ib);
-earlybadusage:
 	explicit_bzero(&ob, sizeof(ob));
 	keyfree(&recs);
 	usage();
