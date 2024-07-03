@@ -16,7 +16,7 @@
 #define BECHPRIVLEN 74
 #define TAGLEN      16      /* poly1305 authentication tag */
 
-static const char *ezeroresult = "x25519 internal failure";
+static const char *ezeroresult = "curve25519 low order point";
 
 static void wrap(uchar out[32], uchar share[32], uchar secret[32], uchar pubkey[32]);
 static const char *body(uchar share[32], uchar esecret[32], uchar pubkey[32], uchar filekey[16], uchar out[32]);
