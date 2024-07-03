@@ -32,7 +32,7 @@ plencrypt(Ibuf *in, Obuf *out, uchar plkey[32])
 	uchar inbuf[CHUNKLEN], outbuf[CHUNKLEN + TAGLEN];
 	uchar nonce[12] = {0};
 	Data ichunk;
-	const char *e;
+	const char *e = NULL;
 	size_t outlen;
 	ssize_t nr, nw;
 	int last;
