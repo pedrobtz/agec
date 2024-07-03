@@ -288,8 +288,11 @@ aread(Ibuf *b, void *buf, size_t nbytes)
 			nr = readall(b->fd, raw, sizeof(raw));
 			if(nr == -1)
 				return -1;
-			if(nr == 0)
+			if(nr == 0) {
+				if(b->aendpos == 0)
+					return -2;
 				return orig - nbytes;
+			}
 			end = endcheck(raw, nr, &b->aendpos);
 			if(end == -1)
 				return -2;
