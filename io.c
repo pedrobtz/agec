@@ -412,5 +412,7 @@ ioerror(int errn)
 		return "armor format error";
 	else if(errn == EDECRYPT)
 		return "failed to decrypt and authenticate payload";
+	else if(errn == EEMPTYCHUNK)
+		return "format error: final chunk is empty";
 	return strerror(errn);
 }

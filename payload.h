@@ -10,6 +10,7 @@ struct Ebuf {
 	struct Ibuf *in;
 	uchar key[32], nonce[12];
 	size_t cur, size;
+	int nchunk;
 };
 
 void payloadkey(uchar filekey[16], uchar nonce[16], uchar plkey[32]);

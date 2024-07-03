@@ -111,10 +111,10 @@ pldecrypt(Ibuf *in, Obuf *out, uchar plkey[32])
 	const char *e = NULL;
 	size_t outlen;
 	ssize_t nr, nw;
-	int last;
+	int last, i;
 
 	ichunk.data = inbuf;
-	for(last = 0; !last; e = incnonce(nonce)) {
+	for(last = 0, i = 0; !last; e = incnonce(nonce), i++) {
 		if(e)
 			return e;
 		nr = bread(in, inbuf, sizeof(inbuf));
@@ -123,6 +123,8 @@ pldecrypt(Ibuf *in, Obuf *out, uchar plkey[32])
 		last = eof(in);
 		if(last == -1)
 			return ioerror(errno);
+		if(last && i > 0 && nr == TAGLEN)
+			return ioerror(EEMPTYCHUNK);
 		ichunk.len = nr;
 		if(last)
 			nonce[11] = 1;
@@ -158,7 +160,7 @@ plinit(Ebuf *b, Ibuf *ib, uchar plkey[32])
 	b->in = ib;
 	memcpy(b->key, plkey, 32);
 	memset(b->nonce, 0, sizeof(b->nonce));
-	b->cur = b->size = 0;
+	b->cur = b->size = b->nchunk = 0;
 	return NULL;
 }
 
@@ -191,10 +193,15 @@ plread(Ebuf *b, void *buf, size_t nbytes)
 			if(last)
 				b->nonce[11] = 1;
 			nr = bread(b->in, b->ibuf, sizeof(b->ibuf));
+			if(last && b->nchunk > 0 && nr == TAGLEN) {
+				errno = EEMPTYCHUNK;
+				return -1;
+			}
 			if(nr == -1)
 				return -1;
 			if(nr == 0)
 				return 0;
+			b->nchunk++;
 			ichunk.len = nr;
 			b->size = decchunk(ichunk, b->key, b->nonce, b->obuf);
 			if(b->size == ~(size_t)0)
