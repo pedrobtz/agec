@@ -102,7 +102,6 @@ void base64encode(uchar *in, uchar *out, size_t inlen, size_t *outlen, int pad)
 		}
 		break;
 	}
-	out[j] = 0;
 	*outlen = j;
 }
 

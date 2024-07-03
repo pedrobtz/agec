@@ -393,7 +393,7 @@ matchscrypt(Ibuf *ib, Stanza *s)
 static const char *
 genhdr(Header *h, uchar filekey[16], int ispass, Keys *recs)
 {
-	char mac[B64EBUFLEN(32)];
+	char mac[B64EBUFLEN(32) + 1];
 	const char *e;
 	size_t maclen;
 
@@ -407,6 +407,7 @@ genhdr(Header *h, uchar filekey[16], int ispass, Keys *recs)
 	if(e)
 		return e;
 	hdrmac(h->data, h->len, filekey, mac, &maclen);
+	mac[sizeof(mac) - 1] = '\0';
 	e = hdrappend(h, " %s\n", mac);
 	if(e)
 		return e;

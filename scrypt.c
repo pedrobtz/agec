@@ -12,7 +12,7 @@
 #include "util.h"
 
 #define SALTLEN		16
-#define COST		18	/* power of two of actual cost */
+#define COST		10	/* power of two of actual cost */
 
 static const char label[] = "age-encryption.org/v1/scrypt";
 
@@ -35,19 +35,21 @@ scryptstanza(Header *h, uchar filekey[16], char *pass)
 static const char *
 stanza(Header *h, uchar filekey[16], char *pass, uchar *salt)
 {
-	uchar b64salt[B64EBUFLEN(SALTLEN)];
+	uchar b64salt[B64EBUFLEN(SALTLEN) + 1];
 	uchar key[32];
-	uchar body[32], b64body[B64EBUFLEN(32)];
+	uchar body[32], b64body[B64EBUFLEN(32) + 1];
 	const char *e;
 	size_t outlen;
 
 	base64encode(salt, b64salt, SALTLEN, &outlen, 0);
+	b64salt[sizeof(b64salt) - 1] = '\0';
 	catlabel(salt);
 	e = wrapkey(key, pass, salt, COST);
 	if(e)
 		return e;
 	keyenc(key, filekey, body);
 	base64encode(body, b64body, 32, &outlen, 0);
+	b64body[sizeof(b64body) - 1] = '\0';
 	e = hdrappend(h, "-> scrypt %s %d\n", b64salt, COST);
 	if(e)
 		return e;

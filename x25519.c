@@ -25,8 +25,8 @@ const char *
 x25519stanza(Header *h, uchar filekey[16], uchar pubkey[32])
 {
 	uchar esecret[32], share[32];
-	uchar b64share[B64EBUFLEN(sizeof(share))];
-	uchar b[32], b64body[B64EBUFLEN(32)];
+	uchar b64share[B64EBUFLEN(sizeof(share)) + 1];
+	uchar b[32], b64body[B64EBUFLEN(32) + 1];
 	const char *e = NULL;
 	size_t outlen;
 	int ok;
@@ -40,6 +40,7 @@ x25519stanza(Header *h, uchar filekey[16], uchar pubkey[32])
 		goto out;
 	}
 	base64encode(share, b64share, sizeof share, &outlen, 0);
+	b64share[sizeof(b64share) - 1] = '\0';
 	e = hdrappend(h, "-> X25519 %s\n", b64share);
 	if(e)
 		goto out;
@@ -47,6 +48,7 @@ x25519stanza(Header *h, uchar filekey[16], uchar pubkey[32])
 	if(e)
 		goto out;
 	base64encode(b, b64body, 32, &outlen, 0);
+	b64body[sizeof(b64body) - 1] = '\0';
 	e = hdrappend(h, "%s\n", b64body);
 out:
 	explicit_bzero(esecret, sizeof esecret);
