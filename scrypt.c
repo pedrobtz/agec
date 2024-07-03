@@ -12,7 +12,7 @@
 #include "util.h"
 
 #define SALTLEN		16
-#define COST		10	/* power of two of actual cost */
+#define COST		18	/* power of two of actual cost */
 
 static const char label[] = "age-encryption.org/v1/scrypt";
 

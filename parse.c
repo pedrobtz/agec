@@ -155,24 +155,25 @@ getarg(Ibuf *b, char *dest, int maxlen, int *len, int *fullread)
 	char c;
 
 	*len = 0;
-	*fullread = 1;
-	while(*len <= maxlen) {
+	*fullread = 0;
+	for(*len = 0; ; (*len)++, dest++) {
 		nr = bpeek(b, &c);
 		if(nr == -1)
 			return ioerror(errno);
 		if(nr == 0)
 			return einval;
-		if(c == ' ' || c == '\n')
+		if(c == ' ' || c == '\n') {
+			*fullread = 1;
+			return NULL;
+		}
+		if(*len == maxlen)
 			return NULL;
 		if(!vchar(c))
 			return einval;
 		*dest = c;
-		(*len)++;
-		dest++;
 		(void)readc(b, &c); /* not possible to fail after bpeek() */
 	}
-	*fullread = 0;
-	return NULL;
+	return NULL; /* not reached */
 }
 
 static const char *
