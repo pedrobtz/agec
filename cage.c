@@ -137,7 +137,7 @@ recadd(Keys *recs, char *bech)
 	ok = x25519pubkey(bech, (uchar *)(recs->buf + recs->len));
 	recs->len++;
 	if(!ok) {
-		return efmt("failed to parse recipient key (line %d)",
+		return efmt("failed to parse recipient key %d",
 				recs->len);
 	}
 	return NULL;
