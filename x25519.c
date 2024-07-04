@@ -87,11 +87,14 @@ wrap(uchar out[32], uchar share[32], uchar secret[32], uchar pubkey[32])
 int
 x25519pubkey(char *bech, uchar pubkey[32])
 {
+	static const char goodprefix[] = "age1";
 	uchar data[BECHPUBLEN - 8];
 	size_t datalen, hrplen;
 	int ok;
 
 	if(strlen(bech) != BECHPUBLEN)
+		return 0;
+	if(memcmp(bech, goodprefix, sizeof(goodprefix) - 1) != 0)
 		return 0;
 	ok = bech32decode(bech, data, &datalen, &hrplen);
 	if(!ok)
