@@ -129,6 +129,8 @@ isarmor(Ibuf *b)
 	nr = readall(b->fd, b->buf, sizeof(armorfirst) - 1);
 	if(nr == -1)
 		return -1;
+	if(nr == 0)
+		b->eof = 1;
 	b->size = nr;
 	if((size_t)nr < sizeof(armorfirst) - 1)
 		return 0;
