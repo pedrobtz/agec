@@ -188,13 +188,13 @@ static const char *
 passenc(Header *h, uchar filekey[16])
 {
 	const char *e;
-	char *pass;
+	char pass[512];
 
-	pass = getpass("Enter passphrase: ");
-	if(pass == NULL)
-		return "failed to read passphrase";
+	e = getpassword("Enter passphrase: ", pass, sizeof(pass));
+	if(e)
+		return ewrap("failed to read passphrase", e);
 	e = scryptstanza(h, filekey, pass);
-	explicit_bzero(pass, strlen(pass)); /* TODO: leaks pass length */
+	explicit_bzero(pass, sizeof(pass));
 	return e;
 }
 
@@ -592,16 +592,16 @@ static const char *
 scryptkey(uchar filekey[16], Stanza *s)
 {
 	const char *e = NULL;
-	char *pass;
+	char pass[512];
 	int ok;
 
 	if(s->scrypt.cost > SCRYPTMAXCOST)
 		return "rejecting: scrypt work factor is too big";
-	pass = getpass("Enter passphrase: ");
-	if(pass == NULL)
-		return "failed to read passphrase";
+	e = getpassword("Enter passphrase: ", pass, sizeof(pass));
+	if(e)
+		return ewrap("failed to read passphrase", e);
 	ok = scryptgetkey(filekey, &s->scrypt, pass, &e);
-	explicit_bzero(pass, strlen(pass)); /* TODO: leaks pass length */
+	explicit_bzero(pass, sizeof(pass));
 	if(e)
 		return e;
 	if(!ok)

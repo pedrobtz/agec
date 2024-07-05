@@ -1,8 +1,11 @@
 #include <errno.h>
+#include <fcntl.h>
 #include <stdarg.h>
 #include <stdio.h>
 #include <stdlib.h>
 #include <string.h>
+#include <termios.h>
+#include <unistd.h>
 
 #include "util.h"
 
@@ -68,4 +71,67 @@ reallocarr(void *p, size_t nmemb, size_t size)
 		return NULL;
 	}
 	return realloc(p, n);
+}
+
+static const char *
+readpass(int fd, char *buf, size_t len)
+{
+	size_t i;
+	int nr, over;
+	char c;
+
+	over = (len == 0) ? 1 : 0;
+	for(i = 0; ; i++) {
+		if(!over && i >= len - 1)
+			over = 1;
+		nr = read(fd, &c, 1);
+		if(nr == -1)
+			return strerror(errno);
+		if(nr == 0 || c == '\n' || c == '\r') {
+			if(!over)
+				buf[i] = '\0';
+			break;
+		}
+		if(!over)
+			buf[i] = c;
+	}
+	if(over)
+		return efmt("passphrase is too long (max %u bytes)", len);
+	(void)write(fd, "\n", 1);
+	return NULL;
+}
+
+/* TODO: consider the need to mess with signals */
+const char *
+getpassword(const char *prompt, char *buf, size_t len)
+{
+	struct termios term;
+	const char *e = NULL;
+	int fd, r;
+
+	fd = open("/dev/tty", O_RDWR);
+	if(fd == -1)
+		return esys("failed to open /dev/tty");
+	r = tcgetattr(fd, &term);
+	if(r == -1) {
+		e = strerror(errno);
+		goto out;
+	}
+	term.c_lflag &= ~ECHO;
+	r = tcsetattr(fd, TCSANOW, &term);
+	if(r == -1) {
+		e = esys("unable to turn off echo");
+		goto out;
+	}
+	(void)write(fd, prompt, strlen(prompt));
+	e = readpass(fd, buf, len);
+	if(e)
+		goto out;
+	term.c_lflag |= ECHO;
+	r = tcsetattr(fd, TCSANOW, &term);
+	if(r == -1)
+		e = esys("unable to turn on echo");
+out:
+	close(fd);
+	return e;
 }
