@@ -10,6 +10,7 @@
 #include "io.h"
 
 #define RECINITLEN 512
+#define UNCHECKED  2
 
 static ssize_t awrite(Obuf *b, void *buf, size_t nbytes);
 static ssize_t aflush(Obuf *b);
@@ -142,7 +143,7 @@ isarmor(Ibuf *b)
 	}
 }
 
-const char *
+void
 ibinit(Ibuf *b, int fd)
 {
 	b->size = b->cur = 0;
@@ -152,11 +153,7 @@ ibinit(Ibuf *b, int fd)
 	b->recording = 1;
 	b->recfail = 0;
 	b->rec.len = b->rec.capacity = 0;
-	b->isarmor = 0;
-	b->isarmor = isarmor(b);
-	if(b->isarmor == -1)
-		return strerror(errno);
-	return NULL;
+	b->isarmor = UNCHECKED;
 }
 
 void
@@ -176,6 +173,11 @@ bread(Ibuf *b, void *buf, size_t nbytes)
 	size_t orig = nbytes;
 	ssize_t nr;
 
+	if(b->isarmor == UNCHECKED) {
+		b->isarmor = isarmor(b);
+		if(b->isarmor == -1)
+			return -1;
+	}
 	if(b->eof)
 		return 0;
 	while(nbytes > 0) {
@@ -329,6 +331,11 @@ bpeek(Ibuf *b, char *c)
 {
 	ssize_t nr;
 
+	if(b->isarmor == UNCHECKED) {
+		b->isarmor = isarmor(b);
+		if(b->isarmor == -1)
+			return -1;
+	}
 	if(b->eof)
 		return 0;
 	if(b->cur < b->size) {

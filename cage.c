@@ -303,11 +303,7 @@ getprivkeys(Keys *privs, const char *path)
 	fd = open(path, O_RDONLY);
 	if(fd == -1)
 		return esys("failed to open key file");
-	e = ibinit(&ib, fd);
-	if(e) {
-		e = ewrap("failed to read key file", e);
-		goto out;
-	}
+	ibinit(&ib, fd);
 	encrypted = checkencrypted(&ib, &eb, &e);
 	if(e)
 		goto out;
@@ -705,14 +701,12 @@ main(int argc, char *argv[])
 			e = esys("failed to open input file");
 			goto out;
 		}
-		e = ibinit(&ib, fd);
+		ibinit(&ib, fd);
 	} else if(argc == 0) {
-		e = ibinit(&ib, 0);
+		ibinit(&ib, 0);
 	} else {
 		goto badusage;
 	}
-	if(e)
-		goto out;
 	ob.cur = 0;
 	ob.fd = 1;
 	ob.isarmor = opts.isarmor;

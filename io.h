@@ -40,7 +40,7 @@ struct Ibuf {
 	Record rec;
 };
 
-const char *ibinit(Ibuf *b, int fd);
+void ibinit(Ibuf *b, int fd);
 void ibfree(Ibuf *b);
 ssize_t bwrite(Obuf *b, void *buf, size_t n);
 ssize_t bflush(Obuf *b);
