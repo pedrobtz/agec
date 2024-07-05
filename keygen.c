@@ -1,4 +1,6 @@
 #include <ctype.h>
+#include <errno.h>
+#include <stdarg.h>
 #include <stdint.h>
 #include <stdio.h>
 #include <stdlib.h>
@@ -25,6 +27,19 @@ usage(void)
 	exit(1);
 }
 
+static void
+dief(const char *fmt, ...)
+{
+	va_list l;
+
+	va_start(l, fmt);
+	fprintf(stderr, "%s: ", argv0);
+	vfprintf(stderr, fmt, l);
+	fprintf(stderr, "\n");
+	va_end(l);
+	exit(1);
+}
+
 static Keypair
 genkey(void)
 {
@@ -32,15 +47,12 @@ genkey(void)
 	int ok;
 
 	ok = randombuf(kp.priv, 32);
-	if(!ok) {
-		fprintf(stderr, "%s: failed to generate private key\n", argv0);
-		exit(1);
-	}
+	if(!ok) 
+		dief("failed to generate private key");
 	ok = x25519pub(kp.pub, kp.priv);
 	if(!ok) {
-		fprintf(stderr, "%s: failed to generate public key"
-				"internal x25519 failure\n", argv0);
-		exit(1);
+		dief("failed to generate public key: "
+				"curve25519 low order point");
 	}
 	return kp;
 }
@@ -60,23 +72,24 @@ print(Keypair kp)
 {
 	uchar pub[63];
 	uchar priv[75];
-	int ok;
+	int ok, r;
 
 	ok = bech32encode("age", kp.pub, 32, pub);
 	if(!ok)
-		goto fail;
+		dief("failed to encode key");
 	ok = bech32encode("age-secret-key-", kp.priv, 32, priv);
 	if(!ok)
-		goto fail;
+		dief("failed to encode key");
 	if(!isatty(1))
 		fprintf(stderr, "Public key: %s\n", pub);
-	printf("# public key: %s\n", pub);
-	puts(upper((char *)priv));
+	r = printf("# public key: %s\n", pub);
+	if(r < 0)
+		dief("failed to write: %s", strerror(errno));
+	r = puts(upper((char *)priv));
+	if(r == EOF)
+		dief("failed to write: %s", strerror(errno));
 	explicit_bzero(priv, sizeof priv);
 	return;
-fail:
-	fprintf(stderr, "%s: failed to encode key\n", argv0);
-	exit(1);
 }
 
 int
