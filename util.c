@@ -135,3 +135,13 @@ out:
 	close(fd);
 	return e;
 }
+
+void
+wipe(void *buf, size_t len)
+{
+	volatile char *p;
+
+	p = (char *)buf;
+	while(len--)
+		*p++ = 0;
+}

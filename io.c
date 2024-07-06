@@ -160,10 +160,10 @@ void
 ibfree(Ibuf *b)
 {
 	if(b->rec.capacity > 0) {
-		explicit_bzero(b->rec.buf, b->rec.capacity);
+		wipe(b->rec.buf, b->rec.capacity);
 		free(b->rec.buf);
 	}
-	explicit_bzero(b, sizeof(*b));
+	wipe(b, sizeof(*b));
 }
 
 ssize_t

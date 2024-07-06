@@ -8,6 +8,7 @@
 #include <string.h>
 
 #include "../common.h"
+#include "../util.h"
 #include "../crypto.h"
 
 #define DIGESTSIZE 32
@@ -86,10 +87,10 @@ pbkdf2(const uchar *pass, size_t passlen, const uchar *salt, size_t saltlen, uin
 		out += DIGESTSIZE;
 		bytes -= DIGESTSIZE;
         }
-	explicit_bzero(ti, sizeof(ti));
-	explicit_bzero(u, sizeof(u));
-	explicit_bzero(&hmacpw, sizeof(hmacpw));
-	explicit_bzero(&hmacpwsalt, sizeof(hmacpwsalt));
+	wipe(ti, sizeof(ti));
+	wipe(u, sizeof(u));
+	wipe(&hmacpw, sizeof(hmacpw));
+	wipe(&hmacpwsalt, sizeof(hmacpwsalt));
 }
 
 #define QUARTER(a,b,c,d) \
@@ -281,7 +282,7 @@ scrypt(const uchar *pass, size_t passlen, const uchar *salt, size_t saltlen, uin
 	/* 3: Out = PBKDF2(pass, X) */
 	pbkdf2(pass, passlen, x, chunk_bytes * p, 1, out, bytes);
 
-	explicit_bzero(yx.ptr, (p + 1) * chunk_bytes);
+	wipe(yx.ptr, (p + 1) * chunk_bytes);
 	free(v.mem);
 	free(yx.mem);
 	return NULL;

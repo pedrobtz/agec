@@ -102,7 +102,7 @@ keyfree(Keys *keys)
 	n = keys->capacity * sizeof(Key);
 	if(keys->capacity > 0 && n / keys->capacity != sizeof(Key))
 		fputs("failed to wipe key buffer: overflow", stderr);
-	explicit_bzero(keys->buf, n);
+	wipe(keys->buf, n);
 	free(keys->buf);
 }
 
@@ -181,7 +181,7 @@ payload(uchar filekey[16], Ibuf *in, Obuf *out)
 	payloadkey(filekey, plnonce, plkey);
 	bwrite(out, plnonce, sizeof(plnonce));
 	e = plencrypt(in, out, plkey);
-	explicit_bzero(plkey, sizeof(plkey));
+	wipe(plkey, sizeof(plkey));
 	return e;
 }
 
@@ -195,7 +195,7 @@ passenc(Header *h, uchar filekey[16])
 	if(e)
 		return ewrap("failed to read passphrase", e);
 	e = scryptstanza(h, filekey, pass);
-	explicit_bzero(pass, sizeof(pass));
+	wipe(pass, sizeof(pass));
 	return e;
 }
 
@@ -486,7 +486,7 @@ encipher(Ibuf *in, Obuf *out, int ispass, Keys *recs)
 	if(e)
 		e = ewrap("failed to encrypt", e);
 out:
-	explicit_bzero(filekey, sizeof(filekey));
+	wipe(filekey, sizeof(filekey));
 	free(h.data);
 	return e;
 }
@@ -598,7 +598,7 @@ scryptkey(uchar filekey[16], Stanza *s)
 	if(e)
 		return ewrap("failed to read passphrase", e);
 	ok = scryptgetkey(filekey, &s->scrypt, pass, &e);
-	explicit_bzero(pass, sizeof(pass));
+	wipe(pass, sizeof(pass));
 	if(e)
 		return e;
 	if(!ok)
@@ -727,14 +727,14 @@ main(int argc, char *argv[])
 		e = encipher(&ib, &ob, opts.pflag, &recs);
 	}
 out:
-	explicit_bzero(&ob, sizeof(ob));
+	wipe(&ob, sizeof(ob));
 	keyfree(&recs);
 	ibfree(&ib);
 	if(e)
 		die(e);
 	return 0;
 badusage:
-	explicit_bzero(&ob, sizeof(ob));
+	wipe(&ob, sizeof(ob));
 	keyfree(&recs);
 	usage();
 }

@@ -7,12 +7,14 @@
 #include <unistd.h>
 
 #include "../common.h"
+#include "../util.h"
+#include "../crypto.h"
 
 #define FOR_T(type, i, start, end) for (type i = (start); i < (end); i++)
 #define FOR(i, start, end)         FOR_T(size_t, i, start, end)
 #define COPY(dst, src, size)       FOR(_i_, 0, size) (dst)[_i_] = (src)[_i_]
 #define ZERO(buf, size)            FOR(_i_, 0, size) (buf)[_i_] = 0
-#define WIPE_BUFFER(buffer)        explicit_bzero(buffer, sizeof(buffer))
+#define WIPE_BUFFER(buffer)        wipe(buffer, sizeof(buffer))
 
 typedef int8_t   i8;
 typedef uint8_t  u8;

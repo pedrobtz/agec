@@ -2,6 +2,7 @@
 #include <string.h>
 
 #include "../common.h"
+#include "../util.h"
 #include "../crypto.h"
 
 /* Implemented only for 32 byte output */
@@ -29,8 +30,8 @@ hkdfsha256(const uchar *ikm, size_t ikmlen, const uchar *salt, size_t saltlen, c
 	sha256update(&ctx, pad, 64);
 	sha256update(&ctx, h, 32);
 	sha256final(&ctx, out);
-	explicit_bzero(&ctx, sizeof(ctx));
-	explicit_bzero(pad, sizeof(pad));
-	explicit_bzero(prk, sizeof(prk));
-	explicit_bzero(h, sizeof(h));
+	wipe(&ctx, sizeof(ctx));
+	wipe(pad, sizeof(pad));
+	wipe(prk, sizeof(prk));
+	wipe(h, sizeof(h));
 }

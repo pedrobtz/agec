@@ -98,7 +98,7 @@ encchunk(Data in, uchar key[32], uchar nonce[12], uchar *out)
 
 	chacha20poly1305init(&ctx, key, nonce);
 	chacha20poly1305write(&ctx, out, NULL, 0, in.data, in.len);
-	explicit_bzero(&ctx, sizeof(ctx));
+	wipe(&ctx, sizeof(ctx));
 	return in.len + TAGLEN;
 }
 
@@ -150,7 +150,7 @@ decchunk(Data in, uchar key[32], uchar nonce[12], uchar *out)
 		errno = EDECRYPT;
 		return ~(size_t)0;
 	}
-	explicit_bzero(&ctx, sizeof(ctx));
+	wipe(&ctx, sizeof(ctx));
 	return in.len - TAGLEN;
 }
 
@@ -167,7 +167,7 @@ plinit(Ebuf *b, Ibuf *ib, uchar plkey[32])
 void
 plfree(Ebuf *b)
 {
-	explicit_bzero(b, sizeof(*b));
+	wipe(b, sizeof(*b));
 }
 
 ssize_t

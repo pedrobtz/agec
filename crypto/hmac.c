@@ -2,6 +2,7 @@
 #include <string.h>
 
 #include "../common.h"
+#include "../util.h"
 #include "../crypto.h"
 
 void
@@ -12,7 +13,7 @@ hmacsha256(const uchar *k, size_t klen, const uchar *in, size_t inlen, uchar out
 	hmacsha256init(&ctx, k, klen);
 	hmacsha256update(&ctx, in, inlen);
 	hmacsha256final(&ctx, out);
-	explicit_bzero(&ctx, sizeof(ctx));
+	wipe(&ctx, sizeof(ctx));
 }
 
 void
@@ -38,8 +39,8 @@ hmacsha256init(Hmacsha256ctx *ctx, const uchar *k, size_t klen)
 	for(i = 0; i < klen; i++)
 		pad[i] ^= k[i];
 	sha256update(&ctx->outer, pad, 64);
-	explicit_bzero(pad, sizeof(pad));
-	explicit_bzero(kh, sizeof(kh));
+	wipe(pad, sizeof(pad));
+	wipe(kh, sizeof(kh));
 }
 
 void
@@ -56,5 +57,5 @@ hmacsha256final(Hmacsha256ctx *ctx, uchar out[32])
 	sha256final(&ctx->inner, h);
 	sha256update(&ctx->outer, h, 32);
 	sha256final(&ctx->outer, out);
-	explicit_bzero(h, sizeof(h));
+	wipe(h, sizeof(h));
 }

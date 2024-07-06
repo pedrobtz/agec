@@ -89,7 +89,7 @@ print(Keypair kp)
 	r = puts(upper((char *)priv));
 	if(r == EOF)
 		dief("failed to write: %s", strerror(errno));
-	explicit_bzero(priv, sizeof priv);
+	wipe(priv, sizeof priv);
 	return;
 }
 
@@ -103,6 +103,6 @@ main(int argc, char *argv[])
 		usage();
 	kp = genkey();
 	print(kp);
-	explicit_bzero(kp.priv, 32);
+	wipe(kp.priv, 32);
 	return 0;
 }

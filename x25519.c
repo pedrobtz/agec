@@ -51,7 +51,7 @@ x25519stanza(Header *h, uchar filekey[16], uchar pubkey[32])
 	b64body[sizeof(b64body) - 1] = '\0';
 	e = hdrappend(h, "%s\n", b64body);
 out:
-	explicit_bzero(esecret, sizeof esecret);
+	wipe(esecret, sizeof esecret);
 	return e;
 }
 
@@ -63,12 +63,12 @@ body(uchar share[32], uchar esecret[32], uchar pubkey[32], uchar filekey[16], uc
 
 	ok = x25519(secret, esecret, pubkey);
 	if(!ok) {
-		explicit_bzero(secret, sizeof(secret));
+		wipe(secret, sizeof(secret));
 		return ezeroresult;
 	}
 	wrap(wrapkey, share, secret, pubkey);
 	keyenc(wrapkey, filekey, out);
-	explicit_bzero(secret, sizeof secret);
+	wipe(secret, sizeof secret);
 	return NULL;
 }
 
