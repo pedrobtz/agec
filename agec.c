@@ -67,8 +67,6 @@ static int getopts(int argc, char **argv, Keys *recs, Opts *opts);
 static int validopts(Opts *opts, Keys *recs);
 
 char *argv0;
-static const char armorfirst[] = "-----BEGIN AGE ENCRYPTED FILE-----\n";
-static const char armorlast[]  = "-----END AGE ENCRYPTED FILE-----\n";
 
 static void
 usage(void)

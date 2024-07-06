@@ -12,6 +12,9 @@
 #define RECINITLEN 512
 #define UNCHECKED  2
 
+const char armorfirst[36] = "-----BEGIN AGE ENCRYPTED FILE-----\n";
+const char armorlast[34]  = "-----END AGE ENCRYPTED FILE-----\n";
+
 static ssize_t awrite(Obuf *b, void *buf, size_t nbytes);
 static ssize_t aflush(Obuf *b);
 static void recappend(Ibuf *b, void *buf, size_t len);
@@ -123,7 +126,6 @@ readall(int fd, void *buf, size_t nbytes)
 static int
 isarmor(Ibuf *b)
 {
-	static const char armorfirst[] = "-----BEGIN AGE ENCRYPTED FILE-----\n";
 	ssize_t nr;
 
 	assert(sizeof(armorfirst) - 1 < IOBUFSIZE);
@@ -226,15 +228,14 @@ bread(Ibuf *b, void *buf, size_t nbytes)
 static int
 endcheck(uchar *buf, size_t len, int *endpos)
 {
-	static const char line[]  = "-----END AGE ENCRYPTED FILE-----\n";
 	size_t start;
 	const char *p, *q;
 
-	if(len - *endpos < sizeof(line) - 1)
+	if(len - *endpos < sizeof(armorlast) - 1)
 		return -1;
-	start = len - *endpos - (sizeof(line) - 1);
+	start = len - *endpos - (sizeof(armorlast) - 1);
 	p = (char *)buf + start;
-	q = line + *endpos;
+	q = armorlast + *endpos;
 
 	if(*p != *q && *endpos == 0) {
 		while(p < (char *)buf + len) {
@@ -245,7 +246,7 @@ endcheck(uchar *buf, size_t len, int *endpos)
 		return 0;
 	}
 	while(p <= (char *)buf + len) {
-		if(q == line + (sizeof(line) - 1)) /* end */
+		if(q == armorlast + (sizeof(armorlast) - 1)) /* end */
 			return (p == (char *)buf + len) ? 1 : -1;
 		if(*p != *q)
 			return -1;
@@ -258,16 +259,15 @@ endcheck(uchar *buf, size_t len, int *endpos)
 static int
 endskip(int fd, int endpos)
 {
-	static const char line[]  = "-----END AGE ENCRYPTED FILE-----\n";
-	uchar buf[sizeof(line)];
+	uchar buf[sizeof(armorlast)];
 	ssize_t nr, nr2;
 
-	nr = readall(fd, buf, sizeof(line) - endpos);
+	nr = readall(fd, buf, sizeof(armorlast) - endpos);
 	if(nr == -1)
 		return -1;
-	if(nr < (ssize_t)(sizeof(line) - 1) - endpos)
+	if(nr < (ssize_t)(sizeof(armorlast) - 1) - endpos)
 		return -2;
-	if(memcmp(buf, line + endpos, (sizeof(line) - 1) - endpos) != 0)
+	if(memcmp(buf, armorlast + endpos, (sizeof(armorlast)-1) - endpos) != 0)
 		return -2;
 	nr2 = read(fd, buf, 1);
 	if(nr2 == -1)

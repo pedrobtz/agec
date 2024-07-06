@@ -40,6 +40,9 @@ struct Ibuf {
 	Record rec;
 };
 
+extern const char armorfirst[36];
+extern const char armorlast[34];
+
 void ibinit(Ibuf *b, int fd);
 void ibfree(Ibuf *b);
 ssize_t bwrite(Obuf *b, void *buf, size_t n);
