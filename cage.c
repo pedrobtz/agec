@@ -1,5 +1,6 @@
 #include <errno.h>
 #include <fcntl.h>
+#include <libgen.h>
 #include <stdint.h>
 #include <stdio.h>
 #include <stdlib.h>
@@ -686,7 +687,7 @@ main(int argc, char *argv[])
 	const char *e = NULL;
 	int optshift, fd;
 
-	argv0 = argv[0] ? argv[0] : "cage";
+	argv0 = argv[0] ? basename(argv[0]) : "cage";
 	e = keyinit(&recs);
 	if(e)
 		die(e);

@@ -1,5 +1,6 @@
 #include <ctype.h>
 #include <errno.h>
+#include <libgen.h>
 #include <stdarg.h>
 #include <stdint.h>
 #include <stdio.h>
@@ -97,7 +98,7 @@ main(int argc, char *argv[])
 {
 	Keypair kp;
 
-	argv0 = argv[0] ? argv[0] : "cage-keygen";
+	argv0 = argv[0] ? basename(argv[0]) : "cage-keygen";
 	if(argc != 1)
 		usage();
 	kp = genkey();
