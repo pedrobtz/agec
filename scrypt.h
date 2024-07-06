@@ -1,7 +1,3 @@
-#include <stdio.h>
-#include "common.h"
-#include "header.h"
-
 typedef struct Scryptarg Scryptarg;
 struct Scryptarg {
 	uchar salt[16];

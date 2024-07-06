@@ -8,6 +8,7 @@
 #include "common.h"
 #include "crypto.h"
 #include "base64.h"
+#include "util.h"
 #include "header.h"
 
 #define HDRINITLEN 128

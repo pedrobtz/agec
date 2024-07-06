@@ -5,6 +5,7 @@
 
 #include "common.h"
 #include "base64.h"
+#include "header.h"
 #include "scrypt.h"
 #include "x25519.h"
 #include "io.h"

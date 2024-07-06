@@ -16,6 +16,7 @@
 #include "io.h"
 #include "parse.h"
 #include "payload.h"
+#include "util.h"
 
 #define SCRYPTMAXCOST 22
 

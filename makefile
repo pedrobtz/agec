@@ -32,11 +32,11 @@ base64.o:	base64.h util.h
 bech32.o:	bech32.h common.h
 agec.o:		common.h base64.h crypto.h header.h io.h parse.h payload.h \
 		scrypt.h util.h x25519.h
-header.o:	header.h common.h base64.h crypto.h
+header.o:	header.h common.h base64.h crypto.h util.h
 io.o:		io.h common.h base64.h util.h
 keyenc.o:	keyenc.h common.h crypto.h util.h
 keygen.o:	bech32.h common.h crypto.h util.h
-parse.o:	parse.h common.h io.h base64.h scrypt.h x25519.h
+parse.o:	parse.h common.h base64.h header.h io.h scrypt.h x25519.h
 payload.o:	payload.h common.h base64.h util.h io.h crypto.h
 scrypt.o:	scrypt.h common.h base64.h crypto.h header.h keyenc.h util.h
 util.o:		util.h
