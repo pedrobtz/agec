@@ -1,5 +1,3 @@
-CC ?= cc
-CFLAGS += -Werror -Wall -Wextra -pedantic
 LIBS = -lssl -lcrypto
 OBJ_AGEC = agec.o base64.o scrypt.o util.o header.o payload.o x25519.o \
 	bech32.o io.o keyenc.o parse.o crypto/curve25519.o crypto/random.o \
@@ -7,8 +5,8 @@ OBJ_AGEC = agec.o base64.o scrypt.o util.o header.o payload.o x25519.o \
 	crypto/scrypt.o
 OBJ_KEYGEN = keygen.o bech32.o util.o crypto/curve25519.o crypto/random.o
 OBJS = $(OBJ_AGEC) $(OBJ_KEYGEN)
-PREFIX ?= /usr/local
-BINDIR ?= $(PREFIX)bin
+PREFIX = /usr/local
+BINDIR = $(PREFIX)bin
 .SUFFIXES: .c .o
 
 all: agec agec-keygen
@@ -21,6 +19,14 @@ agec-keygen: $(OBJ_KEYGEN)
 
 .c.o:
 	$(CC) $(CFLAGS) -c $< -o $@
+
+install: agec agec-keygen
+	mkdir -p $(DESTDIR)$(BINDIR)
+	cp -f agec agec-keygen $(DESTDIR)$(BINDIR)
+	chmod 755 $(DESTDIR)$(BINDIR)/agec $(DESTDIR)$(BINDIR)agec-keygen
+
+clean:
+	rm -f agec agec-keygen $(OBJS)
 
 base64.o:	base64.h util.h
 bech32.o:	bech32.h common.h
@@ -36,11 +42,3 @@ scrypt.o:	scrypt.h base64.h common.h header.h keyenc.h util.h crypto.h
 util.o:		util.h
 x25519.o:	x25519.h common.h base64.h bech32.h header.h keyenc.h util.h \
 		crypto.h
-
-install: agec agec-keygen
-	mkdir -p $(DESTDIR)$(BINDIR)
-	cp -f agec agec-keygen $(DESTDIR)$(BINDIR)
-	chmod 755 $(DESTDIR)$(BINDIR)/agec $(DESTDIR)$(BINDIR)agec-keygen
-
-clean:
-	rm -f agec agec-keygen $(OBJS)
