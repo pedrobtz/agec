@@ -73,7 +73,7 @@ static void
 usage(void)
 {
 	fprintf(stderr, "usage:"
-			"\t%s [-a] (-r recipient)...) [file]\n"
+			"\t%s [-a] (-r recipient)... [file]\n"
 			"\t%s [-a] -p [file]\n"
 			"\t%s [-i path] -d [file]\n",
 			argv0, argv0, argv0);
