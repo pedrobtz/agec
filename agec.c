@@ -55,7 +55,7 @@ static const char *matchscrypt(Ibuf *ib, Stanza *s);
 static const char *readprivkeys(void *b, Keys *privs, int encrypted);
 static const char *getprivkeys(Keys *privs, const char *path);
 static const char *genhdr(Header *h, uchar filekey[16], int ispass, Keys *recs);
-ssize_t writeall(int fd, const void *buf, size_t nbytes);
+static ssize_t writeall(int fd, const void *buf, size_t nbytes);
 static const char *writehdr(Obuf *out, Header *h);
 static const char *encipher(Ibuf *in, Obuf *out, int ispass, Keys *recs);
 static const char *validmac(Ibuf *in, uchar filekey[16], int *isvalid);
@@ -410,7 +410,7 @@ genhdr(Header *h, uchar filekey[16], int ispass, Keys *recs)
 	return NULL;
 }
 
-ssize_t
+static ssize_t
 writeall(int fd, const void *buf, size_t nbytes)
 {
 	size_t off;
