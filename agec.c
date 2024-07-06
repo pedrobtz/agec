@@ -687,7 +687,7 @@ main(int argc, char *argv[])
 	const char *e = NULL;
 	int optshift, fd;
 
-	argv0 = argv[0] ? basename(argv[0]) : "cage";
+	argv0 = argv[0] ? basename(argv[0]) : "agec";
 	e = keyinit(&recs);
 	if(e)
 		die(e);

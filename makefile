@@ -1,22 +1,22 @@
 CC ?= cc
 CFLAGS += -Werror -Wall -Wextra -pedantic
 LIBS = -lssl -lcrypto
-OBJ_CAGE = cage.o base64.o scrypt.o util.o header.o payload.o x25519.o \
+OBJ_AGEC = agec.o base64.o scrypt.o util.o header.o payload.o x25519.o \
 	bech32.o io.o keyenc.o parse.o crypto/curve25519.o crypto/random.o \
 	crypto/sha256.o crypto/hmac.o crypto/hkdf.o crypto/chacha20poly1305.o \
 	crypto/scrypt.o
 OBJ_KEYGEN = keygen.o bech32.o util.o crypto/curve25519.o crypto/random.o
-OBJS = $(OBJ_CAGE) $(OBJ_KEYGEN)
+OBJS = $(OBJ_AGEC) $(OBJ_KEYGEN)
 PREFIX ?= /usr/local
 BINDIR ?= $(PREFIX)bin
 .SUFFIXES: .c .o
 
-all: cage cage-keygen
+all: agec agec-keygen
 
-cage: $(OBJ_CAGE)
-	$(CC) $(LDFLAGS) $(OBJ_CAGE) $(LIBS) -o $@
+agec: $(OBJ_AGEC)
+	$(CC) $(LDFLAGS) $(OBJ_AGEC) $(LIBS) -o $@
 
-cage-keygen: $(OBJ_KEYGEN)
+agec-keygen: $(OBJ_KEYGEN)
 	$(CC) $(LDFLAGS) $(OBJ_KEYGEN) $(LIBS) -o $@
 
 .c.o:
@@ -24,7 +24,7 @@ cage-keygen: $(OBJ_KEYGEN)
 
 base64.o:	base64.h util.h
 bech32.o:	bech32.h common.h
-cage.o:		base64.h common.h header.h scrypt.h x25519.h io.h payload.h \
+agec.o:		base64.h common.h header.h scrypt.h x25519.h io.h payload.h \
 		parse.h crypto.h
 header.o:	header.h base64.h common.h crypto.h
 io.o:		io.h common.h base64.h
@@ -37,10 +37,10 @@ util.o:		util.h
 x25519.o:	x25519.h common.h base64.h bech32.h header.h keyenc.h util.h \
 		crypto.h
 
-install: cage cage-keygen
+install: agec agec-keygen
 	mkdir -p $(DESTDIR)$(BINDIR)
-	cp -f cage cage-keygen $(DESTDIR)$(BINDIR)
-	chmod 755 $(DESTDIR)$(BINDIR)/cage $(DESTDIR)$(BINDIR)cage-keygen
+	cp -f agec agec-keygen $(DESTDIR)$(BINDIR)
+	chmod 755 $(DESTDIR)$(BINDIR)/agec $(DESTDIR)$(BINDIR)agec-keygen
 
 clean:
-	rm -f cage cage-keygen $(OBJS)
+	rm -f agec agec-keygen $(OBJS)
