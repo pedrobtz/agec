@@ -20,23 +20,23 @@
 
 #define SCRYPTMAXCOST 22
 
+typedef struct Key Key;
 struct Key {
 	uchar r[32];
 };
-typedef struct Key Key;
 
+typedef struct Keys Keys;
 struct Keys {
 	Key *buf;
 	size_t len;
 	size_t capacity;
 };
-typedef struct Keys Keys;
 
+typedef struct Opts Opts;
 struct Opts {
 	int isarmor, dflag, pflag;
 	const char *idpath;
 };
-typedef struct Opts Opts;
 
 static const char *mkfilekey(uchar filekey[16]);
 static void usage(void);
