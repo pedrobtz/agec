@@ -112,7 +112,7 @@ int
 base64decode(uchar *in, uchar *out, size_t inlen, size_t *outlen, int pad)
 {
 	size_t lastlen = 0;
-	unsigned i, j, line;
+	unsigned i, j, k, line;
 	uchar c, next = 0;
 
 	if(pad) {
@@ -155,6 +155,14 @@ base64decode(uchar *in, uchar *out, size_t inlen, size_t *outlen, int pad)
 			out[j] = next;
 			out[j++] |= c;
 			break;
+		}
+	}
+	if(pad) {
+		if(i + 2 + 1 < inlen)
+			return 0;
+		for(k = i; k + 1 < inlen; k++) {
+			if(in[k] != PAD)
+				return 0;
 		}
 	}
 	if((i - line) & 0x3 && next)
