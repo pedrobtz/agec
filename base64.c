@@ -121,7 +121,7 @@ base64decode(uchar *in, uchar *out, size_t inlen, size_t *outlen, int pad)
 			return 0; /* last line is wrongly padded */
 	}
 	for(i = j = line = 0; i < inlen; i++) {
-		if(i > 0 && (i + 1) % (LINELEN + 1) == 0) {
+		if(pad && i > 0 && (i + 1) % (LINELEN + 1) == 0) {
 			if(in[i] != '\n')
 				return 0;
 			line++;
