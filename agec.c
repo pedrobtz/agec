@@ -279,6 +279,12 @@ readprivkeys(void *b, Keys *privs, int encrypted)
 			if(nr == 0)
 				break;
 			continue;
+		} else if(c == '\n') {
+			if(encrypted)
+				(void)plread((Ebuf *)b, &c, 1);
+			else
+				(void)bread((Ibuf *)b, &c, 1);
+			continue;
 		}
 		nr = getkey(b, privs, encrypted, &e);
 		if(e)
