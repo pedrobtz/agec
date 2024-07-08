@@ -16,13 +16,13 @@ BINDIR = $(PREFIX)bin
 all: agec agec-keygen
 
 agec: $(OBJ_AGEC)
-	$(CC) $(LDFLAGS) $(OBJ_AGEC) $(LIBS) -o $@
+	$(CC) $(LDFLAGS) -o $@ $(OBJ_AGEC) $(LIBS)
 
 agec-keygen: $(OBJ_KEYGEN)
-	$(CC) $(LDFLAGS) $(OBJ_KEYGEN) $(LIBS) -o $@
+	$(CC) $(LDFLAGS) -o $@ $(OBJ_KEYGEN) $(LIBS)
 
 .c.o:
-	$(CC) $(CFLAGS) -c $< -o $@
+	$(CC) $(CFLAGS) -c -o $@ $<
 
 install: agec agec-keygen
 	mkdir -p $(DESTDIR)$(BINDIR)
