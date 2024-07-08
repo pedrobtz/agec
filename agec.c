@@ -261,7 +261,7 @@ getkey(void *b, Keys *privs, int encrypted, const char **err)
 static const char *
 readprivkeys(void *b, Keys *privs, int encrypted)
 {
-	const char *e;
+	const char *e = NULL;
 	ssize_t nr;
 	int lineno;
 	char c;
