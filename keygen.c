@@ -68,13 +68,27 @@ bgetc(Input *b, char *c)
 }
 
 static ssize_t
+writeall(int fd, const void *buf, size_t nbytes)
+{
+	size_t off;
+	ssize_t nw;
+
+	for(off = 0; off < nbytes; off += nw) {
+		nw = write(fd, (char *)buf + off, nbytes - off);
+		if(nw <= 0)
+			return -1;
+	}
+	return nbytes;
+}
+
+static ssize_t
 bflush(Output *b)
 {
 	ssize_t r;
 
 	if(b->cur == 0)
 		return 0;
-	r = write(1, b->buf, b->cur);
+	r = writeall(1, b->buf, b->cur);
 	b->cur = 0;
 	return r;
 }
@@ -89,7 +103,7 @@ bwrite(Output *b, void *buf, size_t nbytes)
 		ret = bflush(b);
 		if(ret == -1)
 			return -1;
-		return write(1, buf, nbytes);
+		return writeall(1, buf, nbytes);
 	}
 	rest = sizeof(b->buf) - b->cur;
 	c = (rest > nbytes) ? nbytes : rest;
@@ -98,7 +112,7 @@ bwrite(Output *b, void *buf, size_t nbytes)
 		b->cur += nbytes;
 		return 0;
         } else {
-		ret = write(1, b->buf, b->cur);
+		ret = writeall(1, b->buf, b->cur);
 		if(ret == -1)
 			return -1;
 		memcpy(b->buf, (uchar *)buf + rest, nbytes - rest);
