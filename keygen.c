@@ -175,6 +175,7 @@ print(Keypair kp)
 	r = puts(upper((char *)priv));
 	if(r == EOF)
 		dief("failed to write: %s", strerror(errno));
+	wipe(pub, sizeof pub);
 	wipe(priv, sizeof priv);
 	return;
 }
@@ -328,7 +329,7 @@ main(int argc, char *argv[])
 	if(argc == 1) {
 		kp = genkey();
 		print(kp);
-		wipe(kp.priv, 32);
+		wipe(&kp, sizeof(kp));
 	} else if(argc == 2 && strcmp(argv[1], "-y") == 0) {
 		filekeys();
 	} else {
