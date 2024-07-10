@@ -14,6 +14,8 @@
 #include "util.h"
 
 #define BADFORMAT -2
+#define BECHPUBLEN  62
+#define BECHPRIVLEN 74
 
 char *argv0;
 
@@ -158,40 +160,85 @@ genkey(void)
 	return kp;
 }
 
-static char *
+static void
 upper(char *s)
 {
 	int i;
 
 	for(i = 0; s[i]; i++)
 		s[i] = toupper(s[i]);
-	return s;
+}
+
+static void
+encode(Keypair kp, uchar bechpub[BECHPUBLEN+1], uchar bechpriv[BECHPRIVLEN+1])
+{
+	int ok;
+
+	ok = bech32encode("age", kp.pub, 32, bechpub);
+	if(!ok)
+		dief("failed to encode key");
+	ok = bech32encode("age-secret-key-", kp.priv, 32, bechpriv);
+	if(!ok)
+		dief("failed to encode key");
+	upper((char *)bechpriv);
+}
+
+static void
+printpub(Output *out, uchar pub[BECHPUBLEN + 1])
+{
+	static const char head[] = "# public key: ";
+	ssize_t nr;
+
+	if(!isatty(1))
+		fprintf(stderr, "Public key: %s\n", pub);
+	nr = bwrite(out, (void *)head, sizeof(head) - 1);
+	if(nr == -1)
+		goto fail;
+	nr = bwrite(out, pub, BECHPUBLEN);
+	if(nr == -1)
+		goto fail;
+	nr = bwrite(out, "\n", 1);
+	if(nr == -1)
+		goto fail;
+	return;
+fail:
+	dief("failed to write: %s", strerror(errno));
+}
+
+static void
+printpriv(Output *out, uchar priv[BECHPRIVLEN + 1])
+{
+	ssize_t nr;
+
+	nr = bwrite(out, priv, BECHPRIVLEN);
+	if(nr == -1)
+		goto fail;
+	nr = bwrite(out, "\n", 1);
+	if(nr == -1)
+		goto fail;
+	return;
+fail:
+	dief("failed to write: %s", strerror(errno));
 }
 
 static void
 print(Keypair kp)
 {
-	uchar pub[63];
-	uchar priv[75];
-	int ok, r;
+	Output out;
+	uchar pub[BECHPUBLEN + 1];
+	uchar priv[BECHPRIVLEN + 1];
+	ssize_t nr;
 
-	ok = bech32encode("age", kp.pub, 32, pub);
-	if(!ok)
-		dief("failed to encode key");
-	ok = bech32encode("age-secret-key-", kp.priv, 32, priv);
-	if(!ok)
-		dief("failed to encode key");
-	if(!isatty(1))
-		fprintf(stderr, "Public key: %s\n", pub);
-	r = printf("# public key: %s\n", pub);
-	if(r < 0)
-		dief("failed to write: %s", strerror(errno));
-	r = puts(upper((char *)priv));
-	if(r == EOF)
+	outinit(&out);
+	encode(kp, pub, priv);
+	printpub(&out, pub);
+	printpriv(&out, priv);
+	nr = bflush(&out);
+	if(nr == -1)
 		dief("failed to write: %s", strerror(errno));
 	wipe(pub, sizeof pub);
 	wipe(priv, sizeof priv);
-	return;
+	wipe(&out, sizeof out);
 }
 
 static ssize_t
@@ -210,14 +257,14 @@ skipline(Input *b)
 }
 
 static int
-parsekey(char bech[74 + 1], uchar out[32])
+parsekey(char bech[BECHPRIVLEN + 1], uchar out[32])
 {
 	static const char goodprefix[] = "AGE-SECRET-KEY-1";
-	uchar data[74 - 8];
+	uchar data[BECHPRIVLEN - 8];
 	size_t datalen, hrplen;
 	int ok;
 
-	bech[74] = 0;
+	bech[BECHPRIVLEN] = 0;
 	if(memcmp(bech, goodprefix, sizeof(goodprefix) - 1) != 0)
 		return 0;
 	ok = bech32decode(bech, data, &datalen, &hrplen);
@@ -232,13 +279,13 @@ parsekey(char bech[74 + 1], uchar out[32])
 static int
 readkey(Input *in, char first, uchar out[32])
 {
-	char bech[74 + 1];
+	char bech[BECHPRIVLEN + 1];
 	ssize_t nr;
 	int i;
 	char c;
 
 	bech[0] = first;
-	for(i = 0; i < 73; i++) {
+	for(i = 0; i < BECHPRIVLEN - 1; i++) {
 		nr = bgetc(in, &c);
 		if(nr == -1)
 			return -1;
@@ -257,7 +304,7 @@ readkey(Input *in, char first, uchar out[32])
 static const char *
 writepub(Output *out, uchar priv[32])
 {
-	uchar pub[32], bech[63];
+	uchar pub[32], bech[BECHPUBLEN + 1];
 	ssize_t nr;
 	int ok;
 
@@ -327,7 +374,9 @@ filekeys(void)
 			goto out;
 	}
 out:
-	bflush(&out);
+	nr = bflush(&out);
+	if(nr == -1)
+		e = esys("failed to write");
 	wipe(&in, sizeof(in));
 	wipe(&out, sizeof(out));
 	if(e)
