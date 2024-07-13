@@ -18,7 +18,7 @@ const char armorlast[34]  = "-----END AGE ENCRYPTED FILE-----\n";
 static ssize_t awrite(Obuf *b, void *buf, size_t nbytes);
 static ssize_t aflush(Obuf *b);
 static void recappend(Ibuf *b, void *buf, size_t len);
-static ssize_t readall(int fd, void *buf, size_t nbytes);
+static ssize_t readall(int fd, void *buf, size_t nbytes, int *eof);
 static int isarmor(Ibuf *b);
 static int endcheck(uchar *buf, size_t len, int *endpos);
 static int endskip(int fd, int endpos);
@@ -106,7 +106,7 @@ bflush(Obuf *b)
 }
 
 static ssize_t
-readall(int fd, void *buf, size_t nbytes)
+readall(int fd, void *buf, size_t nbytes, int *eof)
 {
 	ssize_t nr, total = 0;
 
@@ -114,8 +114,10 @@ readall(int fd, void *buf, size_t nbytes)
 		nr = read(fd, buf, nbytes);
 		if(nr < 0)
 			return nr;
-		if(nr == 0)
+		if(nr == 0) {
+			*eof = 1;
 			return total;
+		}
 		nbytes -= nr;
 		total += nr;
 		buf = (char *)buf + nr;
@@ -129,7 +131,7 @@ isarmor(Ibuf *b)
 	ssize_t nr;
 
 	assert(sizeof(armorfirst) - 1 < IOBUFSIZE);
-	nr = readall(b->fd, b->buf, sizeof(armorfirst) - 1);
+	nr = readall(b->fd, b->buf, sizeof(armorfirst) - 1, &b->eof);
 	if(nr == -1)
 		return -1;
 	if(nr == 0)
@@ -261,8 +263,9 @@ endskip(int fd, int endpos)
 {
 	uchar buf[sizeof(armorlast)];
 	ssize_t nr, nr2;
+	int eof;
 
-	nr = readall(fd, buf, sizeof(armorlast) - endpos);
+	nr = readall(fd, buf, sizeof(armorlast) - endpos, &eof);
 	if(nr == -1)
 		return -1;
 	if(nr < (ssize_t)(sizeof(armorlast) - 1) - endpos)
@@ -283,13 +286,13 @@ aread(Ibuf *b, void *buf, size_t nbytes)
 	uchar raw[IOABUFREADSIZE];
 	size_t rest, c, outlen, orig = nbytes;
 	ssize_t nr;
-	int ok, end;
+	int ok, end, eof;
 
 	while(nbytes > 0) {
 		if(b->acur == b->asize)
 			b->acur = b->asize = 0;
 		if(b->asize == 0) {
-			nr = readall(b->fd, raw, sizeof(raw));
+			nr = readall(b->fd, raw, sizeof(raw), &eof);
 			if(nr == -1)
 				return -1;
 			if(nr == 0) {
