@@ -60,7 +60,7 @@ static const char *writehdr(Obuf *out, Header *h);
 static const char *encipher(Ibuf *in, Obuf *out, int ispass, Keys *recs);
 static const char *validmac(Ibuf *in, uchar filekey[16], int *isvalid);
 static const char *validatemac(Ibuf *in, uchar filekey[16]);
-static const char *scryptkey(uchar filekey[16], Stanza *s);
+static const char *scryptkey(const char *prompt, uchar filekey[16], Stanza *s);
 static const char *findx25519(uchar filekey[16], Stanza *s, Keys *ids, int *found);
 static const char *match(Ibuf *in, uchar filekey[16], Stanza *s, Keys *ids, int *found);
 static const char *decipher(Ibuf *in, Obuf *out, Keys *ids);
@@ -355,7 +355,7 @@ checkencrypted(Ibuf *ib, Ebuf *eb, const char **err)
 		*err = e;
 		return 0;
 	}
-	e = scryptkey(filekey, &s);
+	e = scryptkey("Enter passphrase for key file: ", filekey, &s);
 	if(e) {
 		*err = ewrap("failed to decrypt key file", e);
 		return 0;
@@ -532,7 +532,7 @@ decipher(Ibuf *in, Obuf *out, Keys *ids)
 	if(!found)
 		return "no identity matched any of the recipients";
 	if(s.type == SCRYPT) {
-		e = scryptkey(filekey, &s);
+		e = scryptkey("Enter passphrase: ", filekey, &s);
 		if(e)
 			return e;
 	}
@@ -591,7 +591,7 @@ match(Ibuf *in, uchar filekey[16], Stanza *s, Keys *ids, int *found)
 }
 
 static const char *
-scryptkey(uchar filekey[16], Stanza *s)
+scryptkey(const char *prompt, uchar filekey[16], Stanza *s)
 {
 	const char *e = NULL;
 	char pass[512];
@@ -599,7 +599,7 @@ scryptkey(uchar filekey[16], Stanza *s)
 
 	if(s->scrypt.cost > SCRYPTMAXCOST)
 		return "rejecting: scrypt work factor is too big";
-	e = getpassword("Enter passphrase: ", pass, sizeof(pass));
+	e = getpassword(prompt, pass, sizeof(pass));
 	if(e)
 		return ewrap("failed to read passphrase", e);
 	ok = scryptgetkey(filekey, &s->scrypt, pass, &e);
