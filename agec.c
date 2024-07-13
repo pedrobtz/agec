@@ -75,7 +75,7 @@ usage(void)
 	fprintf(stderr, "usage:"
 			"\t%s (-r recipient)... [-a] [file]\n"
 			"\t%s -p [-a] [file]\n"
-			"\t%s -d [-i path] [file]\n",
+			"\t%s -d [-i keyfile] [file]\n",
 			argv0, argv0, argv0);
 	exit(1);
 }
