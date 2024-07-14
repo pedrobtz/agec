@@ -72,7 +72,7 @@ char *argv0;
 static void
 usage(void)
 {
-	fprintf(stderr, "usage:"
+	fprintf(stderr, "usage:\n"
 			"\t%s (-r recipient)... [-a] [file]\n"
 			"\t%s -p [-a] [file]\n"
 			"\t%s -d [-i keyfile] [file]\n",
