@@ -14,13 +14,13 @@
 #define ZERO(buf, size)            memset(buf, 0, size * sizeof((*buf)))
 #define WIPE_BUFFER(buffer)        wipe(buffer, sizeof(buffer))
 
-typedef int8_t   i8;
-typedef uint8_t  u8;
-typedef int16_t  i16;
-typedef uint32_t u32;
-typedef int32_t  i32;
-typedef int64_t  i64;
-typedef uint64_t u64;
+typedef int8   i8;
+typedef uint8  u8;
+typedef int16  i16;
+typedef uint32 u32;
+typedef int32  i32;
+typedef int64  i64;
+typedef uint64 u64;
 typedef i32 fe[10];
 
 const uchar curve25519basepoint[32] = {
@@ -292,7 +292,7 @@ fe_ccopy(fe f, const fe g, int b)
  * which means ignoring 2 bits instead.
  */
 static void
-fe_frombytes_mask(fe h, const u8 s[32], unsigned nb_mask)
+fe_frombytes_mask(fe h, const u8 s[32], uint nb_mask)
 {
 	u32 mask = 0xffffff >> nb_mask;
 	i64 t0 =  load32_le(s);                    /* t0 < 2^32 */

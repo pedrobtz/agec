@@ -1,5 +1,4 @@
 #include <stdarg.h>
-#include <stdint.h>
 #include <stdio.h>
 #include <string.h>
 
@@ -18,7 +17,7 @@ static const char label[] = "age-encryption.org/v1/scrypt";
 
 static void catlabel(uchar *s);
 static const char *stanza(Header *h, uchar filekey[16], char *pass, uchar *salt);
-static const char *wrapkey(uchar key[32], char *pass, uchar *salt, unsigned factor);
+static const char *wrapkey(uchar key[32], char *pass, uchar *salt, uint factor);
 
 const char *
 scryptstanza(Header *h, uchar filekey[16], char *pass)
@@ -60,7 +59,7 @@ stanza(Header *h, uchar filekey[16], char *pass, uchar *salt)
 }
 
 static const char *
-wrapkey(uchar key[32], char *pass, uchar *salt, unsigned factor)
+wrapkey(uchar key[32], char *pass, uchar *salt, uint factor)
 {
 	const char *e;
 

@@ -1,4 +1,3 @@
-#include <stdint.h>
 #include <string.h>
 
 #include "../common.h"
@@ -6,7 +5,7 @@
 #include "../crypto.h"
 
 void
-hmacsha256(const uchar *k, size_t klen, const uchar *in, size_t inlen, uchar out[32])
+hmacsha256(const uchar *k, usize klen, const uchar *in, usize inlen, uchar out[32])
 {
 	Hmacsha256ctx ctx;
 
@@ -17,10 +16,10 @@ hmacsha256(const uchar *k, size_t klen, const uchar *in, size_t inlen, uchar out
 }
 
 void
-hmacsha256init(Hmacsha256ctx *ctx, const uchar *k, size_t klen)
+hmacsha256init(Hmacsha256ctx *ctx, const uchar *k, usize klen)
 {
 	uchar pad[64], kh[32];
-	size_t i;
+	usize i;
 
 	if(klen > 64) {
 		sha256init(&ctx->inner);
@@ -44,7 +43,7 @@ hmacsha256init(Hmacsha256ctx *ctx, const uchar *k, size_t klen)
 }
 
 void
-hmacsha256update(Hmacsha256ctx *ctx, const uchar *in, size_t inlen)
+hmacsha256update(Hmacsha256ctx *ctx, const uchar *in, usize inlen)
 {
 	sha256update(&ctx->inner, in, inlen);
 }

@@ -1,7 +1,6 @@
 #include <errno.h>
 #include <stdio.h>
 #include <string.h>
-#include <stdint.h>
 
 #include "common.h"
 #include "base64.h"
@@ -15,8 +14,8 @@
 
 static int eof(Ibuf *b);
 static const char *incnonce(uchar nonce[12]);
-static size_t encchunk(Data in, uchar key[32], uchar nonce[12], uchar *out);
-static size_t decchunk(Data in, uchar key[32], uchar nonce[12], uchar *out);
+static usize encchunk(Data in, uchar key[32], uchar nonce[12], uchar *out);
+static usize decchunk(Data in, uchar key[32], uchar nonce[12], uchar *out);
 
 void
 payloadkey(uchar filekey[16], uchar nonce[16], uchar plkey[32])
@@ -33,8 +32,8 @@ plencrypt(Ibuf *in, Obuf *out, uchar plkey[32])
 	uchar nonce[12] = {0};
 	Data ichunk;
 	const char *e = NULL;
-	size_t outlen;
-	ssize_t nr, nw;
+	usize outlen;
+	ssize nr, nw;
 	int last;
 
 	outlen = sizeof(outbuf);
@@ -62,7 +61,7 @@ plencrypt(Ibuf *in, Obuf *out, uchar plkey[32])
 static int
 eof(Ibuf *b)
 {
-	ssize_t nr;
+	ssize nr;
 	char c;
 
 	if(b->eof)
@@ -91,7 +90,7 @@ incnonce(uchar nonce[12])
 	return NULL;
 }
 
-static size_t
+static usize
 encchunk(Data in, uchar key[32], uchar nonce[12], uchar *out)
 {
 	Chacha20poly1305ctx ctx;
@@ -109,8 +108,8 @@ pldecrypt(Ibuf *in, Obuf *out, uchar plkey[32])
 	uchar nonce[12] = {0};
 	Data ichunk;
 	const char *e = NULL;
-	size_t outlen;
-	ssize_t nr, nw;
+	usize outlen;
+	ssize nr, nw;
 	int last, i;
 
 	ichunk.data = inbuf;
@@ -129,7 +128,7 @@ pldecrypt(Ibuf *in, Obuf *out, uchar plkey[32])
 		if(last)
 			nonce[11] = 1;
 		outlen = decchunk(ichunk, plkey, nonce, outbuf);
-		if(outlen == ~(size_t)0)
+		if(outlen == ~(usize)0)
 			return ioerror(errno);
 		nw = bwrite(out, outbuf, outlen);
 		if(nw == -1)
@@ -138,7 +137,7 @@ pldecrypt(Ibuf *in, Obuf *out, uchar plkey[32])
 	return NULL;
 }
 
-static size_t
+static usize
 decchunk(Data in, uchar key[32], uchar nonce[12], uchar *out)
 {
 	Chacha20poly1305ctx ctx;
@@ -148,7 +147,7 @@ decchunk(Data in, uchar key[32], uchar nonce[12], uchar *out)
 	fail = chacha20poly1305read(&ctx, out, NULL, 0, in.data, in.len);
 	if(fail) {
 		errno = EDECRYPT;
-		return ~(size_t)0;
+		return ~(usize)0;
 	}
 	wipe(&ctx, sizeof(ctx));
 	return in.len - TAGLEN;
@@ -170,13 +169,13 @@ plfree(Ebuf *b)
 	wipe(b, sizeof(*b));
 }
 
-ssize_t
-plread(Ebuf *b, void *buf, size_t nbytes)
+ssize
+plread(Ebuf *b, void *buf, usize nbytes)
 {
 	Data ichunk;
 	const char *e;
-	size_t orig = nbytes, c, rest;
-	ssize_t nr;
+	usize orig = nbytes, c, rest;
+	ssize nr;
 	int last;
 
 	ichunk.data = b->ibuf;
@@ -204,7 +203,7 @@ plread(Ebuf *b, void *buf, size_t nbytes)
 			b->nchunk++;
 			ichunk.len = nr;
 			b->size = decchunk(ichunk, b->key, b->nonce, b->obuf);
-			if(b->size == ~(size_t)0)
+			if(b->size == ~(usize)0)
 				return -1;
 			e = incnonce(b->nonce);
 			if(e) {
@@ -222,13 +221,13 @@ plread(Ebuf *b, void *buf, size_t nbytes)
 	return orig - nbytes;
 }
 
-ssize_t
+ssize
 plpeek(Ebuf *b, char *c)
 {
 	Data ichunk;
 	const char *e;
 	int last;
-	ssize_t nr;
+	ssize nr;
 
 	ichunk.data = b->ibuf;
 	if(b->cur < b->size) {

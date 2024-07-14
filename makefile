@@ -68,6 +68,6 @@ keygen.o:	bech32.h common.h crypto.h util.h
 parse.o:	parse.h common.h base64.h header.h io.h scrypt.h x25519.h
 payload.o:	payload.h common.h base64.h util.h io.h crypto.h
 scrypt.o:	scrypt.h common.h base64.h crypto.h header.h keyenc.h util.h
-util.o:		util.h
+util.o:		util.h common.h
 x25519.o:	x25519.h common.h crypto.h base64.h bech32.h header.h keyenc.h \
 		util.h

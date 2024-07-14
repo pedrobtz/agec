@@ -51,10 +51,10 @@ static const uchar dtable[256] = {
 	0x80, 0x80, 0x80
 };
 
-void base64encode(uchar *in, uchar *out, size_t inlen, size_t *outlen, int pad)
+void base64encode(uchar *in, uchar *out, usize inlen, usize *outlen, int pad)
 {
 	int s;
-	unsigned i, j;
+	uint i, j;
 	uchar c, l;
 
 	s = 0;
@@ -109,10 +109,10 @@ void base64encode(uchar *in, uchar *out, size_t inlen, size_t *outlen, int pad)
  * where len is the number of base64 characters only.
  */
 int
-base64decode(uchar *in, uchar *out, size_t inlen, size_t *outlen, int pad)
+base64decode(uchar *in, uchar *out, usize inlen, usize *outlen, int pad)
 {
-	size_t lastlen = 0;
-	unsigned i, j, k, line;
+	usize lastlen = 0;
+	uint i, j, k, line;
 	uchar c, next = 0;
 
 	if(pad) {

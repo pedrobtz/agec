@@ -11,7 +11,7 @@ enum {
 typedef struct Obuf Obuf;
 struct Obuf {
 	int fd;
-	size_t cur;
+	usize cur;
 	int isarmor;
 	union {
 		uchar buf[IOBUFSIZE];
@@ -23,7 +23,7 @@ struct Obuf {
 typedef struct Record Record;
 struct Record {
 	uchar *buf;
-	size_t len, capacity;
+	usize len, capacity;
 };
 
 typedef struct Ibuf Ibuf;
@@ -32,8 +32,8 @@ struct Ibuf {
 	int eof;
 	int isarmor;
 	int recording, recfail;
-	size_t cur, size;
-	size_t acur, asize;
+	usize cur, size;
+	usize acur, asize;
 	int aendpos;
 	uchar buf[IOBUFSIZE];
 	uchar abuf[IOABUFREADSIZE];
@@ -45,9 +45,9 @@ extern const char armorlast[34];
 
 void ibinit(Ibuf *b, int fd);
 void ibfree(Ibuf *b);
-ssize_t bwrite(Obuf *b, void *buf, size_t n);
-ssize_t bflush(Obuf *b);
-ssize_t bread(Ibuf *b, void *buf, size_t n);
-ssize_t bpeek(Ibuf *b, char *c);
-uchar *recstop(Ibuf *b, size_t *len);
+ssize bwrite(Obuf *b, void *buf, usize n);
+ssize bflush(Obuf *b);
+ssize bread(Ibuf *b, void *buf, usize n);
+ssize bpeek(Ibuf *b, char *c);
+uchar *recstop(Ibuf *b, usize *len);
 const char *ioerror(int errn);

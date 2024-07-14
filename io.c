@@ -15,20 +15,20 @@
 const char armorfirst[36] = "-----BEGIN AGE ENCRYPTED FILE-----\n";
 const char armorlast[34]  = "-----END AGE ENCRYPTED FILE-----\n";
 
-static ssize_t awrite(Obuf *b, void *buf, size_t nbytes);
-static ssize_t aflush(Obuf *b);
-static void recappend(Ibuf *b, void *buf, size_t len);
-static ssize_t readall(int fd, void *buf, size_t nbytes, int *eof);
+static ssize awrite(Obuf *b, void *buf, usize nbytes);
+static ssize aflush(Obuf *b);
+static void recappend(Ibuf *b, void *buf, usize len);
+static ssize readall(int fd, void *buf, usize nbytes, int *eof);
 static int isarmor(Ibuf *b);
-static int endcheck(uchar *buf, size_t len, int *endpos);
+static int endcheck(uchar *buf, usize len, int *endpos);
 static int endskip(int fd, int endpos);
-static ssize_t aread(Ibuf *b, void *buf, size_t nbytes);
+static ssize aread(Ibuf *b, void *buf, usize nbytes);
 
-ssize_t
-bwrite(Obuf *b, void *buf, size_t nbytes)
+ssize
+bwrite(Obuf *b, void *buf, usize nbytes)
 {
-	size_t rest, c;
-	ssize_t ret;
+	usize rest, c;
+	ssize ret;
 
 	if(b->isarmor)
 		return awrite(b, buf, nbytes);
@@ -54,11 +54,11 @@ bwrite(Obuf *b, void *buf, size_t nbytes)
 	}
 }
 
-static ssize_t
-awrite(Obuf *b, void *buf, size_t nbytes)
+static ssize
+awrite(Obuf *b, void *buf, usize nbytes)
 {
-	size_t rest, c;
-	ssize_t r;
+	usize rest, c;
+	ssize r;
 
 	while(nbytes > 0) {
 		rest = sizeof(b->buf.abuf) - b->cur;
@@ -76,12 +76,12 @@ awrite(Obuf *b, void *buf, size_t nbytes)
 	return 1;
 }
 
-static ssize_t
+static ssize
 aflush(Obuf *b)
 {
 	uchar buf[IOABUFSIZE];
-	size_t outlen;
-	ssize_t r;
+	usize outlen;
+	ssize r;
 
 	if(b->cur == 0)
 		return 0;
@@ -91,10 +91,10 @@ aflush(Obuf *b)
 	return r;
 }
 
-ssize_t
+ssize
 bflush(Obuf *b)
 {
-	ssize_t r;
+	ssize r;
 
 	if(b->isarmor)
 		return aflush(b);
@@ -105,10 +105,10 @@ bflush(Obuf *b)
 	return r;
 }
 
-static ssize_t
-readall(int fd, void *buf, size_t nbytes, int *eof)
+static ssize
+readall(int fd, void *buf, usize nbytes, int *eof)
 {
-	ssize_t nr, total = 0;
+	ssize nr, total = 0;
 
 	while(nbytes > 0) {
 		nr = read(fd, buf, nbytes);
@@ -128,7 +128,7 @@ readall(int fd, void *buf, size_t nbytes, int *eof)
 static int
 isarmor(Ibuf *b)
 {
-	ssize_t nr;
+	ssize nr;
 
 	assert(sizeof(armorfirst) - 1 < IOBUFSIZE);
 	nr = readall(b->fd, b->buf, sizeof(armorfirst) - 1, &b->eof);
@@ -137,7 +137,7 @@ isarmor(Ibuf *b)
 	if(nr == 0)
 		b->eof = 1;
 	b->size = nr;
-	if((size_t)nr < sizeof(armorfirst) - 1)
+	if((usize)nr < sizeof(armorfirst) - 1)
 		return 0;
 	if(memcmp(armorfirst, b->buf, sizeof(armorfirst) - 1) == 0) {
 		b->size = 0;
@@ -170,12 +170,12 @@ ibfree(Ibuf *b)
 	wipe(b, sizeof(*b));
 }
 
-ssize_t
-bread(Ibuf *b, void *buf, size_t nbytes)
+ssize
+bread(Ibuf *b, void *buf, usize nbytes)
 {
-	size_t c, rest;
-	size_t orig = nbytes;
-	ssize_t nr;
+	usize c, rest;
+	usize orig = nbytes;
+	ssize nr;
 
 	if(b->isarmor == UNCHECKED) {
 		b->isarmor = isarmor(b);
@@ -228,9 +228,9 @@ bread(Ibuf *b, void *buf, size_t nbytes)
  * updated if the ending line is partial.
  */
 static int
-endcheck(uchar *buf, size_t len, int *endpos)
+endcheck(uchar *buf, usize len, int *endpos)
 {
-	size_t start;
+	usize start;
 	const char *p, *q;
 
 	if(len - *endpos < sizeof(armorlast) - 1)
@@ -262,13 +262,13 @@ static int
 endskip(int fd, int endpos)
 {
 	uchar buf[sizeof(armorlast)];
-	ssize_t nr, nr2;
+	ssize nr, nr2;
 	int eof;
 
 	nr = readall(fd, buf, sizeof(armorlast) - endpos, &eof);
 	if(nr == -1)
 		return -1;
-	if(nr < (ssize_t)(sizeof(armorlast) - 1) - endpos)
+	if(nr < (ssize)(sizeof(armorlast) - 1) - endpos)
 		return -2;
 	if(memcmp(buf, armorlast + endpos, (sizeof(armorlast)-1) - endpos) != 0)
 		return -2;
@@ -280,12 +280,12 @@ endskip(int fd, int endpos)
 	return nr;
 }
 
-static ssize_t
-aread(Ibuf *b, void *buf, size_t nbytes)
+static ssize
+aread(Ibuf *b, void *buf, usize nbytes)
 {
 	uchar raw[IOABUFREADSIZE];
-	size_t rest, c, outlen, orig = nbytes;
-	ssize_t nr;
+	usize rest, c, outlen, orig = nbytes;
+	ssize nr;
 	int ok, end, eof;
 
 	while(nbytes > 0) {
@@ -329,10 +329,10 @@ aread(Ibuf *b, void *buf, size_t nbytes)
 	return orig - nbytes;
 }
 
-ssize_t
+ssize
 bpeek(Ibuf *b, char *c)
 {
-	ssize_t nr;
+	ssize nr;
 
 	if(b->isarmor == UNCHECKED) {
 		b->isarmor = isarmor(b);
@@ -364,9 +364,9 @@ bpeek(Ibuf *b, char *c)
 }
 
 static void
-recappend(Ibuf *b, void *buf, size_t len)
+recappend(Ibuf *b, void *buf, usize len)
 {
-	size_t cap, ncap;
+	usize cap, ncap;
 
 	if(b->recfail)
 		return;
@@ -400,7 +400,7 @@ recappend(Ibuf *b, void *buf, size_t len)
 }
 
 uchar *
-recstop(Ibuf *b, size_t *len)
+recstop(Ibuf *b, usize *len)
 {
 	b->recording = 0;
 	if(b->recfail) {

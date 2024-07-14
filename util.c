@@ -7,6 +7,7 @@
 #include <termios.h>
 #include <unistd.h>
 
+#include "common.h"
 #include "util.h"
 
 extern const char *argv0;
@@ -15,7 +16,7 @@ char ebuf[512];
 const char *
 ewrap(const char *outer, const char *inner)
 {
-	size_t olen, ilen;
+	usize olen, ilen;
 
 	olen = strlen(outer);
 	ilen = strlen(inner);
@@ -61,9 +62,9 @@ die(const char *msg)
 }
 
 void *
-reallocarr(void *p, size_t nmemb, size_t size)
+reallocarr(void *p, usize nmemb, usize size)
 {
-	size_t n;
+	usize n;
 
 	n = nmemb * size;
 	if(nmemb > 0 && n / nmemb != size) {
@@ -74,9 +75,9 @@ reallocarr(void *p, size_t nmemb, size_t size)
 }
 
 static const char *
-readpass(int fd, char *buf, size_t len)
+readpass(int fd, char *buf, usize len)
 {
-	size_t i;
+	usize i;
 	int nr, over;
 	char c;
 
@@ -103,7 +104,7 @@ readpass(int fd, char *buf, size_t len)
 
 /* TODO: consider the need to mess with signals */
 const char *
-getpassword(const char *prompt, char *buf, size_t len)
+getpassword(const char *prompt, char *buf, usize len)
 {
 	struct termios term;
 	const char *e = NULL;
@@ -137,7 +138,7 @@ out:
 }
 
 void
-wipe(void *buf, size_t len)
+wipe(void *buf, usize len)
 {
 	volatile char *p;
 

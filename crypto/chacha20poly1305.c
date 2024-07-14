@@ -1,6 +1,4 @@
 /* Public domain. Extracted from monocypher-4.0.2. */
-#include <stddef.h>
-#include <stdint.h>
 #include <string.h>
 
 #include "../common.h"
@@ -13,9 +11,9 @@
 #define WIPE_BUFFER(buffer)        wipe(buffer, sizeof(buffer))
 #define MIN(a, b)                  ((a) <= (b) ? (a) : (b))
 
-typedef uint8_t  u8;
-typedef uint32_t u32;
-typedef uint64_t u64;
+typedef uint8  u8;
+typedef uint32 u32;
+typedef uint64 u64;
 
 static const u8 *chacha20_constant = (const u8*)"expand 32-byte k"; /*16 bytes*/
 static const u8 zero[128] = {0};
@@ -26,12 +24,12 @@ typedef struct {
 	 * Do not rely on the size or contents of this type,
 	 * for they may change without notice.
 	 */
-	uint8_t  c[16];  /* chunk of the message */
-	size_t   c_idx;  /* How many bytes are there in the chunk. */
-	uint32_t r  [4]; /* constant multiplier (from the secret key) */
+	uchar    c[16];  /* chunk of the message */
+	usize    c_idx;  /* How many bytes are there in the chunk. */
+	uint32   r  [4]; /* constant multiplier (from the secret key) */
 	/* random number added at the end (from the secret key) */
-	uint32_t pad[4];
-	uint32_t h  [5]; /* accumulated hash */
+	uint32   pad[4];
+	uint32   h  [5]; /* accumulated hash */
 } poly1305_ctx;
 
 /*
@@ -41,8 +39,8 @@ typedef struct {
  * Only works when pow_2 is a power of 2.
  * Note: we use ~x+1 instead of -x to avoid compiler warnings
  */
-static size_t
-gap(size_t x, size_t pow_2)
+static usize
+gap(usize x, usize pow_2)
 {
 	return (~x + 1) & (pow_2 - 1);
 }
@@ -73,8 +71,8 @@ store32_le(u8 out[4], u32 in)
 }
 
 static void
-load32_le_buf (u32 *dst, const u8 *src, size_t size) {
-	size_t i;
+load32_le_buf (u32 *dst, const u8 *src, usize size) {
+	usize i;
 
 	for (i = 0; i < size; i++)
 		dst[i] = load32_le(src + i*4);
@@ -144,14 +142,14 @@ chacha20_rounds(u32 out[16], const u32 in[16])
 
 
 static u64
-chacha20_djb(u8 *cipher_text, const u8 *plain_text, size_t text_size, const u8 key[32], const u8 nonce[8], u64 ctr)
+chacha20_djb(u8 *cipher_text, const u8 *plain_text, usize text_size, const u8 key[32], const u8 nonce[8], u64 ctr)
 {
 	u32 input[16];
-	size_t i, j;
+	usize i, j;
 
 	/* Whole blocks */
 	u32    pool[16];
-	size_t nb_blocks = text_size >> 6;
+	usize  nb_blocks = text_size >> 6;
 
 	load32_le_buf(input     , chacha20_constant, 4);
 	load32_le_buf(input +  4, key              , 8);
@@ -214,7 +212,7 @@ chacha20_djb(u8 *cipher_text, const u8 *plain_text, size_t text_size, const u8 k
  *   ctx->h <= 4_ffffffff_ffffffff_ffffffff_ffffffff
  */
 static void
-poly_blocks(poly1305_ctx *ctx, const u8 *in, size_t nb_blocks, unsigned end)
+poly_blocks(poly1305_ctx *ctx, const u8 *in, usize nb_blocks, uint end)
 {
 	u64 s0, s1, s2, s3, x0, x1, x2, x3, u0, u1, u2, u3;
 	u32 s4, x4, u4, u5;
@@ -233,7 +231,7 @@ poly_blocks(poly1305_ctx *ctx, const u8 *in, size_t nb_blocks, unsigned end)
 	u32 h2 = ctx->h[2];
 	u32 h3 = ctx->h[3];
 	u32 h4 = ctx->h[4];
-	size_t i;
+	usize i;
 
 	for (i = 0; i < nb_blocks; i++) {
 		/* h + c, without carry propagation */
@@ -289,9 +287,9 @@ poly1305_init(poly1305_ctx *ctx, const u8 key[32])
 }
 
 static void
-poly1305_update(poly1305_ctx *ctx, const u8 *message, size_t message_size)
+poly1305_update(poly1305_ctx *ctx, const u8 *message, usize message_size)
 {
-	size_t i, aligned, nb_blocks;
+	usize i, aligned, nb_blocks;
 
 	/* Avoid undefined NULL pointer increments with empty messages */
 	if (message_size == 0) {
@@ -364,7 +362,7 @@ poly1305_final(poly1305_ctx *ctx, u8 mac[16])
 }
 
 static void
-lock_auth(u8 mac[16], const u8 auth_key[32], const u8 *ad, size_t ad_size, const u8 *cipher_text, size_t text_size)
+lock_auth(u8 mac[16], const u8 auth_key[32], const u8 *ad, usize ad_size, const u8 *cipher_text, usize text_size)
 {
 	u8 sizes[16];                    /* Not secret, not wiped */
 	poly1305_ctx poly_ctx;           /* auto wiped... */
@@ -390,7 +388,7 @@ chacha20poly1305init(Chacha20poly1305ctx *ctx, const uchar key[32], const uchar 
 }
 
 void
-chacha20poly1305write(Chacha20poly1305ctx *ctx, uchar *out, const uchar *ad, size_t adlen, const uchar *in, size_t inlen)
+chacha20poly1305write(Chacha20poly1305ctx *ctx, uchar *out, const uchar *ad, usize adlen, const uchar *in, usize inlen)
 {
 	u8 auth_key[64]; /* the last 32 bytes are used for rekeying. */
 	u8 *mac = out + inlen;
@@ -404,7 +402,7 @@ chacha20poly1305write(Chacha20poly1305ctx *ctx, uchar *out, const uchar *ad, siz
 }
 
 int
-chacha20poly1305read(Chacha20poly1305ctx *ctx, uchar *out, const uchar *ad, size_t adlen, const uchar *in, size_t inlen)
+chacha20poly1305read(Chacha20poly1305ctx *ctx, uchar *out, const uchar *ad, usize adlen, const uchar *in, usize inlen)
 {
 	u8 auth_key[64]; /* the last 32 bytes are used for rekeying. */
 	u8 real_mac[16];

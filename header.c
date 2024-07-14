@@ -1,6 +1,5 @@
 #include <errno.h>
 #include <stdarg.h>
-#include <stdint.h>
 #include <stdio.h>
 #include <stdlib.h>
 #include <string.h>
@@ -35,7 +34,7 @@ hdrappend(Header *h, char *fmt, ...)
 	
 	va_start(l, fmt);
 	ret = vsnprintf(buf, sizeof buf, fmt, l);
-	if(ret < 0 || (size_t)ret >= sizeof buf)
+	if(ret < 0 || (usize)ret >= sizeof buf)
 		return "buffer overflow";
 	if(h->len + ret >= h->allocated) {
 		h->allocated = h->len + ret + 1;
@@ -51,7 +50,7 @@ hdrappend(Header *h, char *fmt, ...)
 
 /* out length must be at least B64EBUFLEN(32) */
 void
-hdrmac(uchar *data, size_t len, uchar filekey[16], char *out, size_t *outlen)
+hdrmac(uchar *data, usize len, uchar filekey[16], char *out, usize *outlen)
 {
 	uchar md[32];
 
@@ -60,7 +59,7 @@ hdrmac(uchar *data, size_t len, uchar filekey[16], char *out, size_t *outlen)
 }
 
 void
-mac(uchar *data, size_t len, uchar filekey[16], uchar out[32])
+mac(uchar *data, usize len, uchar filekey[16], uchar out[32])
 {
 	uchar dk[32];
 

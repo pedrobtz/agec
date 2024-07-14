@@ -1,7 +1,6 @@
 #include <ctype.h>
 #include <errno.h>
 #include <stdarg.h>
-#include <stdint.h>
 #include <stdio.h>
 #include <stdlib.h>
 #include <string.h>
@@ -26,13 +25,13 @@ struct Keypair {
 
 typedef struct Input Input;
 struct Input {
-	size_t size, cur;
+	usize size, cur;
 	uchar buf[8192];
 };
 
 typedef struct Output Output;
 struct Output {
-	size_t cur;
+	usize cur;
 	uchar buf[8192];
 };
 
@@ -51,7 +50,7 @@ outinit(Output *b)
 static int
 bgetc(Input *b, char *c)
 {
-	ssize_t nr;
+	ssize nr;
 
 	if(b->cur == b->size)
 		b->cur = b->size = 0;
@@ -68,11 +67,11 @@ bgetc(Input *b, char *c)
 	return 1;
 }
 
-static ssize_t
-writeall(int fd, const void *buf, size_t nbytes)
+static ssize
+writeall(int fd, const void *buf, usize nbytes)
 {
-	size_t off;
-	ssize_t nw;
+	usize off;
+	ssize nw;
 
 	for(off = 0; off < nbytes; off += nw) {
 		nw = write(fd, (char *)buf + off, nbytes - off);
@@ -82,10 +81,10 @@ writeall(int fd, const void *buf, size_t nbytes)
 	return nbytes;
 }
 
-static ssize_t
+static ssize
 bflush(Output *b)
 {
-	ssize_t r;
+	ssize r;
 
 	if(b->cur == 0)
 		return 0;
@@ -94,11 +93,11 @@ bflush(Output *b)
 	return r;
 }
 
-static ssize_t
-bwrite(Output *b, void *buf, size_t nbytes)
+static ssize
+bwrite(Output *b, void *buf, usize nbytes)
 {
-        size_t rest, c;
-        ssize_t ret;
+        usize rest, c;
+        ssize ret;
 
 	if(nbytes > sizeof(b->buf)) {
 		ret = bflush(b);
@@ -186,7 +185,7 @@ static void
 printpub(Output *out, uchar pub[BECHPUBLEN + 1])
 {
 	static const char head[] = "# public key: ";
-	ssize_t nr;
+	ssize nr;
 
 	if(!isatty(1))
 		fprintf(stderr, "Public key: %s\n", pub);
@@ -207,7 +206,7 @@ fail:
 static void
 printpriv(Output *out, uchar priv[BECHPRIVLEN + 1])
 {
-	ssize_t nr;
+	ssize nr;
 
 	nr = bwrite(out, priv, BECHPRIVLEN);
 	if(nr == -1)
@@ -226,7 +225,7 @@ print(Keypair kp)
 	Output out;
 	uchar pub[BECHPUBLEN + 1];
 	uchar priv[BECHPRIVLEN + 1];
-	ssize_t nr;
+	ssize nr;
 
 	outinit(&out);
 	encode(kp, pub, priv);
@@ -240,10 +239,10 @@ print(Keypair kp)
 	wipe(&out, sizeof out);
 }
 
-static ssize_t
+static ssize
 skipline(Input *b)
 {
-	ssize_t nr;
+	ssize nr;
 	char c;
 
 	for(;;) {
@@ -260,7 +259,7 @@ parsekey(char bech[BECHPRIVLEN + 1], uchar out[32])
 {
 	static const char goodprefix[] = "AGE-SECRET-KEY-1";
 	uchar data[BECHPRIVLEN - 8];
-	size_t datalen, hrplen;
+	usize datalen, hrplen;
 	int ok;
 
 	bech[BECHPRIVLEN] = 0;
@@ -279,7 +278,7 @@ static int
 readkey(Input *in, char first, uchar out[32])
 {
 	char bech[BECHPRIVLEN + 1];
-	ssize_t nr;
+	ssize nr;
 	int i;
 	char c;
 
@@ -304,7 +303,7 @@ static const char *
 writepub(Output *out, uchar priv[32])
 {
 	uchar pub[32], bech[BECHPUBLEN + 1];
-	ssize_t nr;
+	ssize nr;
 	int ok;
 
 	ok = x25519pub(pub, priv);
@@ -333,7 +332,7 @@ filekeys(void)
 	Output out;
 	uchar priv[32];
 	const char *e = NULL;
-	ssize_t nr;
+	ssize nr;
 	int lineno;
 	char c;
 

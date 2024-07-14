@@ -28,19 +28,19 @@ typedef struct Alignedalloc {
 	uchar *mem, *ptr;
 } Alignedalloc;
 
-typedef uint32_t mixword;
+typedef uint32 mixword;
 
 static Alignedalloc
-alloc(uint64_t size, const char **err)
+alloc(uint64 size, const char **err)
 {
-	static const size_t maxalloc = (size_t)-1;
+	static const usize maxalloc = (usize)-1;
         Alignedalloc aa;
 
         size += BLOCKBYTES - 1;
         if(size > maxalloc)
 		*err = "not enough address space to allocate required memory";
-	aa.mem = malloc((size_t)size);
-	aa.ptr = (uchar *)(((size_t)aa.mem + (BLOCKBYTES-1)) & ~(BLOCKBYTES-1));
+	aa.mem = malloc((usize)size);
+	aa.ptr = (uchar *)(((usize)aa.mem + (BLOCKBYTES-1)) & ~(BLOCKBYTES-1));
 	if(!aa.mem)
 		*err = strerror(errno);
 	return aa;
@@ -48,13 +48,13 @@ alloc(uint64_t size, const char **err)
 
 
 static void
-pbkdf2(const uchar *pass, size_t passlen, const uchar *salt, size_t saltlen, uint64_t n, uchar *out, size_t bytes)
+pbkdf2(const uchar *pass, usize passlen, const uchar *salt, usize saltlen, uint64 n, uchar *out, usize bytes)
 {
 	Hmacsha256ctx hmacpw, hmacpwsalt, work;
 	uchar ti[DIGESTSIZE], u[DIGESTSIZE];
 	uchar be[4];
-	uint32_t i, j, blocks;
-	uint64_t c;
+	uint32 i, j, blocks;
+	uint64 c;
 
 	/*
 	 * bytes must be <= (0xffffffff - (DIGESTSIZE - 1)), which
@@ -65,7 +65,7 @@ pbkdf2(const uchar *pass, size_t passlen, const uchar *salt, size_t saltlen, uin
 	/* hmac(pass, salt...) */
 	hmacpwsalt = hmacpw;
 	hmacsha256update(&hmacpwsalt, salt, saltlen);
-	blocks = ((uint32_t)bytes + (DIGESTSIZE - 1)) / DIGESTSIZE;
+	blocks = ((uint32)bytes + (DIGESTSIZE - 1)) / DIGESTSIZE;
 	for(i = 1; i <= blocks; i++) {
 		/* U1 = hmac(pass, salt || be(i)) */
 		U32TO8_BE(be, i);
@@ -100,10 +100,10 @@ pbkdf2(const uchar *pass, size_t passlen, const uchar *salt, size_t saltlen, uin
 		t = d+c; t = ROTL32(t, 18); a ^= t;
 
 static void
-salsa(uint32_t state[16])
+salsa(uint32 state[16])
 {
-	size_t rounds = 8;
-	uint32_t x0,x1,x2,x3,x4,x5,x6,x7,x8,x9,x10,x11,x12,x13,x14,x15,t;
+	usize rounds = 8;
+	uint32 x0,x1,x2,x3,x4,x5,x6,x7,x8,x9,x10,x11,x12,x13,x14,x15,t;
 
 	x0 = state[0];
 	x1 = state[1];
@@ -164,10 +164,10 @@ blockp(mixword *base, mixword i)
 }
 
 static void
-chunkmix(mixword *bout, mixword *bin, mixword *bxor, uint32_t r)
+chunkmix(mixword *bout, mixword *bin, mixword *bxor, uint32 r)
 {
 	mixword x[BLOCKWORDS], *block;
-	uint32_t i, j, blocksperchunk = r * 2, half = 0;
+	uint32 i, j, blocksperchunk = r * 2, half = 0;
 
 	/* 1: X = B_{2r - 1} */
 	block = blockp(bin, blocksperchunk - 1);
@@ -200,10 +200,10 @@ chunkmix(mixword *bout, mixword *bin, mixword *bxor, uint32_t r)
 }
 
 static void
-convertendian(mixword *blocks, size_t nblocks)
+convertendian(mixword *blocks, usize nblocks)
 {
-	static const union { uchar b[2]; uint16_t w; } endian_test = {{1,0}};
-	size_t i;
+	static const union { uchar b[2]; uint16 w; } endian_test = {{1,0}};
+	usize i;
 
 	if(endian_test.w == 0x100) {
 		nblocks *= BLOCKWORDS;
@@ -213,9 +213,9 @@ convertendian(mixword *blocks, size_t nblocks)
 }
 
 static void
-romix(mixword *x, mixword *y, mixword *v, uint32_t n, uint32_t r)
+romix(mixword *x, mixword *y, mixword *v, uint32 n, uint32 r)
 {
-	uint32_t i, j, chunkWords = (uint32_t)(BLOCKWORDS * r * 2);
+	uint32 i, j, chunkWords = (uint32)(BLOCKWORDS * r * 2);
 	mixword *block = v;
 
 	convertendian(x, r * 2);
@@ -254,15 +254,15 @@ romix(mixword *x, mixword *y, mixword *v, uint32_t n, uint32_t r)
 }
 
 const char *
-scrypt(const uchar *pass, size_t passlen, const uchar *salt, size_t saltlen, uint32_t n, uint32_t r, uint32_t p, uchar *out, size_t bytes)
+scrypt(const uchar *pass, usize passlen, const uchar *salt, usize saltlen, uint32 n, uint32 r, uint32 p, uchar *out, usize bytes)
 {
 	Alignedalloc yx, v;
 	const char *err = NULL;
 	uchar *x, *y;
-	uint32_t chunk_bytes, i;
+	uint32 chunk_bytes, i;
 
 	chunk_bytes = BLOCKBYTES * r * 2;
-	v = alloc((uint64_t)n * chunk_bytes, &err);
+	v = alloc((uint64)n * chunk_bytes, &err);
 	if(err)
 		return err;
 	yx = alloc((p + 1) * chunk_bytes, &err);

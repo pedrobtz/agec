@@ -9,7 +9,7 @@ struct Ebuf {
 	uchar obuf[CHUNKLEN + TAGLEN];
 	struct Ibuf *in;
 	uchar key[32], nonce[12];
-	size_t cur, size;
+	usize cur, size;
 	int nchunk;
 };
 
@@ -18,5 +18,5 @@ const char *plencrypt(Ibuf *in, Obuf *out, uchar plkey[32]);
 const char *pldecrypt(Ibuf *in, Obuf *out, uchar plkey[32]);
 const char *plinit(Ebuf *b, Ibuf *ib, uchar plkey[32]);
 void plfree(Ebuf *b);
-ssize_t plread(Ebuf *b, void *buf, size_t nbytes);
-ssize_t plpeek(Ebuf *b, char *c);
+ssize plread(Ebuf *b, void *buf, usize nbytes);
+ssize plpeek(Ebuf *b, char *c);

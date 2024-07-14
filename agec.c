@@ -1,6 +1,5 @@
 #include <errno.h>
 #include <fcntl.h>
-#include <stdint.h>
 #include <stdio.h>
 #include <stdlib.h>
 #include <string.h>
@@ -27,8 +26,8 @@ struct Key {
 typedef struct Keys Keys;
 struct Keys {
 	Key *buf;
-	size_t len;
-	size_t capacity;
+	usize len;
+	usize capacity;
 };
 
 typedef struct Opts Opts;
@@ -47,14 +46,14 @@ static void keyfree(Keys *keys);
 static const char *keynew(Keys *keys);
 static const char *recadd(Keys *recs, char *bech);
 static int privadd(Keys *recs, char bech[74+1], const char **err);
-static ssize_t skipline(void *b, int encrypted);
-static ssize_t getkey(void *b, Keys *privs, int encrypted, const char **err);
+static ssize skipline(void *b, int encrypted);
+static ssize getkey(void *b, Keys *privs, int encrypted, const char **err);
 static int checkencrypted(Ibuf *ib, Ebuf *eb, const char **err);
 static const char *matchscrypt(Ibuf *ib, Stanza *s);
 static const char *readprivkeys(void *b, Keys *privs, int encrypted);
 static const char *getprivkeys(Keys *privs, const char *path);
 static const char *genhdr(Header *h, uchar filekey[16], int ispass, Keys *recs);
-static ssize_t writeall(int fd, const void *buf, size_t nbytes);
+static ssize writeall(int fd, const void *buf, usize nbytes);
 static const char *writehdr(Obuf *out, Header *h);
 static const char *encipher(Ibuf *in, Obuf *out, int ispass, Keys *recs);
 static const char *validmac(Ibuf *in, uchar filekey[16], int *isvalid);
@@ -95,7 +94,7 @@ keyinit(Keys *keys)
 static void
 keyfree(Keys *keys)
 {
-	size_t n;
+	usize n;
 
 	n = keys->capacity * sizeof(Key);
 	if(keys->capacity > 0 && n / keys->capacity != sizeof(Key))
@@ -108,7 +107,7 @@ keyfree(Keys *keys)
 static const char *
 keynew(Keys *keys)
 {
-	size_t ncap;
+	usize ncap;
 
 	if(keys->len + 1 > keys->capacity) {
 		ncap = keys->capacity * 2;
@@ -201,7 +200,7 @@ static const char *
 pubenc(Header *h, uchar filekey[16], Keys *recs)
 {
 	const char *e;
-	size_t i;
+	usize i;
 
 	for(i = 0; i < recs->len; i++) {
 		e = x25519stanza(h, filekey, (uchar *)(recs->buf + i));
@@ -211,10 +210,10 @@ pubenc(Header *h, uchar filekey[16], Keys *recs)
 	return NULL;
 }
 
-static ssize_t
+static ssize
 skipline(void *b, int encrypted)
 {
-	ssize_t nr;
+	ssize nr;
 	char c;
 
 	for(;;) {
@@ -229,11 +228,11 @@ skipline(void *b, int encrypted)
 	}
 }
 
-static ssize_t
+static ssize
 getkey(void *b, Keys *privs, int encrypted, const char **err)
 {
 	char key[74+1], c;
-	ssize_t nr;
+	ssize nr;
 	int ok;
 
 	nr = encrypted ? plread((Ebuf *)b, key, 74) : bread((Ibuf *)b, key, 74);
@@ -261,7 +260,7 @@ static const char *
 readprivkeys(void *b, Keys *privs, int encrypted)
 {
 	const char *e = NULL;
-	ssize_t nr;
+	ssize nr;
 	int lineno;
 	char c;
 
@@ -332,7 +331,7 @@ checkencrypted(Ibuf *ib, Ebuf *eb, const char **err)
 {
 	uchar filekey[16], plnonce[16], plkey[32];
 	Stanza s;
-	ssize_t nr;
+	ssize nr;
 	char c;
 	const char *e;
 
@@ -396,7 +395,7 @@ genhdr(Header *h, uchar filekey[16], int ispass, Keys *recs)
 {
 	char mac[B64EBUFLEN(32) + 1];
 	const char *e;
-	size_t maclen;
+	usize maclen;
 
 	e = hdrappend(h, "age-encryption.org/v1\n");
 	if(e)
@@ -415,11 +414,11 @@ genhdr(Header *h, uchar filekey[16], int ispass, Keys *recs)
 	return NULL;
 }
 
-static ssize_t
-writeall(int fd, const void *buf, size_t nbytes)
+static ssize
+writeall(int fd, const void *buf, usize nbytes)
 {
-	size_t off;
-	ssize_t nw;
+	usize off;
+	ssize nw;
 
 	for(off = 0; off < nbytes; off += nw) {
 		nw = write(fd, (char *)buf + off, nbytes - off);
@@ -432,7 +431,7 @@ writeall(int fd, const void *buf, size_t nbytes)
 static const char *
 writehdr(Obuf *out, Header *h)
 {
-	ssize_t nw;
+	ssize nw;
 
 	if(out->isarmor) {
 		nw = writeall(out->fd, armorfirst, sizeof(armorfirst) - 1);
@@ -449,7 +448,7 @@ static const char *
 writebody(Obuf *out, Ibuf *in, uchar filekey[16])
 {
 	const char *e;
-	ssize_t nw;
+	ssize nw;
 
 	e = payload(filekey, in, out);
 	if(e)
@@ -501,7 +500,7 @@ validmac(Ibuf *in, uchar filekey[16], int *isvalid)
 	uchar mac1[32], mac2[32];
 	static const char *e;
 	uchar *data;
-	size_t len;
+	usize len;
 
 	data = recstop(in, &len);
 	if(data == NULL)
@@ -553,7 +552,7 @@ static const char *
 findx25519(uchar filekey[16], Stanza *s, Keys *ids, int *found)
 {
 	const char *e = NULL;
-	size_t i;
+	usize i;
 
 	for(i = 0; i < ids->len && !*found; i++) {
 		*found = x25519getkey(filekey, &s->arg.x25519,

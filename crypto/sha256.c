@@ -11,7 +11,7 @@
 #include "../common.h"
 #include "../crypto.h"
 
-static uint32_t ror(uint32_t n, int k) { return (n >> k) | (n << (32-k)); }
+static uint32 ror(uint32 n, int k) { return (n >> k) | (n << (32-k)); }
 #define Ch(x,y,z)  (z ^ (x & (y ^ z)))
 #define Maj(x,y,z) ((x & y) | (z & (x | y)))
 #define S0(x)      (ror(x,2) ^ ror(x,13) ^ ror(x,22))
@@ -19,7 +19,7 @@ static uint32_t ror(uint32_t n, int k) { return (n >> k) | (n << (32-k)); }
 #define R0(x)      (ror(x,7) ^ ror(x,18) ^ (x>>3))
 #define R1(x)      (ror(x,17) ^ ror(x,19) ^ (x>>10))
 
-static const uint32_t K[64] = {
+static const uint32 K[64] = {
 0x428a2f98, 0x71374491, 0xb5c0fbcf, 0xe9b5dba5, 0x3956c25b, 0x59f111f1, 0x923f82a4, 0xab1c5ed5,
 0xd807aa98, 0x12835b01, 0x243185be, 0x550c7dc3, 0x72be5d74, 0x80deb1fe, 0x9bdc06a7, 0xc19bf174,
 0xe49b69c1, 0xefbe4786, 0x0fc19dc6, 0x240ca1cc, 0x2de92c6f, 0x4a7484aa, 0x5cb0a9dc, 0x76f988da,
@@ -33,13 +33,13 @@ static const uint32_t K[64] = {
 static void
 processblock(Sha256ctx *s, const uchar *buf)
 {
-	uint32_t W[64], t1, t2, a, b, c, d, e, f, g, h;
+	uint32 W[64], t1, t2, a, b, c, d, e, f, g, h;
 	int i;
 
 	for(i = 0; i < 16; i++) {
-		W[i] = (uint32_t)buf[4*i]<<24;
-		W[i] |= (uint32_t)buf[4*i+1]<<16;
-		W[i] |= (uint32_t)buf[4*i+2]<<8;
+		W[i] = (uint32)buf[4*i]<<24;
+		W[i] |= (uint32)buf[4*i+1]<<16;
+		W[i] |= (uint32)buf[4*i+2]<<8;
 		W[i] |= buf[4*i+3];
 	}
 	for(; i < 64; i++)
@@ -77,7 +77,7 @@ processblock(Sha256ctx *s, const uchar *buf)
 static void
 pad(Sha256ctx *s)
 {
-	unsigned r = s->len % 64;
+	uint r = s->len % 64;
 
 	s->buf[r++] = 0x80;
 	if(r > 56) {
@@ -130,7 +130,7 @@ void
 sha256update(Sha256ctx *s, const void *m, unsigned long len)
 {
 	const uchar *p = m;
-	unsigned r = s->len % 64;
+	uint r = s->len % 64;
 
 	s->len += len;
 	if(r) {

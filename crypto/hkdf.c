@@ -1,4 +1,3 @@
-#include <stdint.h>
 #include <string.h>
 
 #include "../common.h"
@@ -7,7 +6,7 @@
 
 /* Implemented only for 32 byte output */
 void
-hkdfsha256(const uchar *ikm, size_t ikmlen, const uchar *salt, size_t saltlen, const uchar *info, size_t infolen, uchar out[32])
+hkdfsha256(const uchar *ikm, usize ikmlen, const uchar *salt, usize saltlen, const uchar *info, usize infolen, uchar out[32])
 {
 	Sha256ctx ctx;
 	uchar prk[32], h[32], pad[64];

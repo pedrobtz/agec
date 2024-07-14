@@ -2,8 +2,6 @@
  * Based on Pascal S. de Kloe's public domain implementation:
  * https://github.com/pascaldekloe/bech32 (commit 43757af)
  */
-#include <stddef.h>
-#include <stdint.h>
 #include <string.h>
 
 #include "common.h"
@@ -28,19 +26,19 @@ static const char chartab[128] = {
  */
 static const char *dictionary = "qpzry9x8gf2tvdw0s3jn54khce6mua7l";
 
-static size_t prepare(char *s, size_t *last1, int *ok);
-static uint32_t labelcheck(char *s, size_t len, int *ok);
-static uint32_t check5bits(uint32_t code, uint32_t v);
-static int decode(uchar *out, char *s, size_t len, size_t last1, size_t *olen, uint32_t *code);
-static uint32_t checksum(char *s, size_t slen, uint32_t code, int *ok);
-static uint32_t encode(uchar *data, size_t datalen, uint32_t code, uchar *out, size_t *olen);
-static void encodesum(uint32_t code, uchar *out);
+static usize prepare(char *s, usize *last1, int *ok);
+static uint32 labelcheck(char *s, usize len, int *ok);
+static uint32 check5bits(uint32 code, uint32 v);
+static int decode(uchar *out, char *s, usize len, usize last1, usize *olen, uint32 *code);
+static uint32 checksum(char *s, usize slen, uint32 code, int *ok);
+static uint32 encode(uchar *data, usize datalen, uint32 code, uchar *out, usize *olen);
+static void encodesum(uint32 code, uchar *out);
 
 int
-bech32decode(char *s, uchar *out, size_t *outlen, size_t *hrplen)
+bech32decode(char *s, uchar *out, usize *outlen, usize *hrplen)
 {
-	size_t slen, last1;
-	uint32_t code;
+	usize slen, last1;
+	uint32 code;
 	int ok;
 
 	slen = prepare(s, &last1, &ok);
@@ -65,10 +63,10 @@ bech32decode(char *s, uchar *out, size_t *outlen, size_t *hrplen)
 	return 1;
 }
 
-static size_t
-prepare(char *s, size_t *last1, int *ok)
+static usize
+prepare(char *s, usize *last1, int *ok)
 {
-	size_t i;
+	usize i;
 	int haslow = 0, hasup = 0;
 
 	*last1 = -1;
@@ -86,10 +84,10 @@ prepare(char *s, size_t *last1, int *ok)
 	return i;
 }
 
-static uint32_t
-labelcheck(char *s, size_t len, int *ok)
+static uint32
+labelcheck(char *s, usize len, int *ok)
 {
-	uint32_t code, i;
+	uint32 code, i;
 
 	code = 1;
 	for(i = 0; i < len; i++) {
@@ -102,16 +100,16 @@ labelcheck(char *s, size_t len, int *ok)
 	}
 	code = check5bits(code, 0);
 	for(i = 0; i < len; i++)
-		code = check5bits(code, (uint32_t)s[i] & 31);
+		code = check5bits(code, (uint32)s[i] & 31);
 	*ok = 1;
 	return code;
 }
 
 /* See the 'Checksum' subsection in BIP 0173. */
-static uint32_t
-check5bits(uint32_t code, uint32_t v)
+static uint32
+check5bits(uint32 code, uint32 v)
 {
-	uint32_t b;
+	uint32 b;
 
 	b = code >> 25;
 	code = (code & 0x1ffffff)<<5 ^ v;
@@ -129,11 +127,11 @@ check5bits(uint32_t code, uint32_t v)
 }
 
 static int
-decode(uchar *out, char *s, size_t len, size_t last1, size_t *olen, uint32_t *code)
+decode(uchar *out, char *s, usize len, usize last1, usize *olen, uint32 *code)
 {
-	size_t i, o;
-	uint32_t c = *code;
-	uint32_t acc = 0;
+	usize i, o;
+	uint32 c = *code;
+	uint32 acc = 0;
 	int bits = 0;
 	char v;
 
@@ -154,10 +152,10 @@ decode(uchar *out, char *s, size_t len, size_t last1, size_t *olen, uint32_t *co
 	return 1;
 }
 
-static uint32_t
-checksum(char *s, size_t slen, uint32_t code, int *ok)
+static uint32
+checksum(char *s, usize slen, uint32 code, int *ok)
 {
-	size_t i;
+	usize i;
 	char v;
 
 	for(i = slen - 6; i < slen; i++) {
@@ -172,10 +170,10 @@ checksum(char *s, size_t slen, uint32_t code, int *ok)
 }
 
 int
-bech32encode(char *label, uchar *data, size_t datalen, uchar *out)
+bech32encode(char *label, uchar *data, usize datalen, uchar *out)
 {
-	size_t nbits = datalen * 8, l, labellen, olen;
-	uint32_t code;
+	usize nbits = datalen * 8, l, labellen, olen;
+	uint32 code;
 	int ok;
 
 	labellen = strlen(label);
@@ -192,12 +190,12 @@ bech32encode(char *label, uchar *data, size_t datalen, uchar *out)
 	return 1;
 }
 
-static uint32_t
-encode(uchar *data, size_t datalen, uint32_t code, uchar *out, size_t *olen)
+static uint32
+encode(uchar *data, usize datalen, uint32 code, uchar *out, usize *olen)
 {
 	uchar *start = out;
-	size_t i;
-	uint8_t acc = 0, v;
+	usize i;
+	uint8 acc = 0, v;
 	int nbits = 0;
 
 	for(i = 0; i < datalen; i++) {
@@ -225,7 +223,7 @@ encode(uchar *data, size_t datalen, uint32_t code, uchar *out, size_t *olen)
 }
 
 static void
-encodesum(uint32_t code, uchar *out)
+encodesum(uint32 code, uchar *out)
 {
 	int i;
 

@@ -1,5 +1,4 @@
 #include <assert.h>
-#include <stdint.h>
 #include <string.h>
 
 #include "common.h"
@@ -28,7 +27,7 @@ x25519stanza(Header *h, uchar filekey[16], uchar pubkey[32])
 	uchar b64share[B64EBUFLEN(sizeof(share)) + 1];
 	uchar b[32], b64body[B64EBUFLEN(32) + 1];
 	const char *e = NULL;
-	size_t outlen;
+	usize outlen;
 	int ok;
 
 	ok = randombuf(esecret, sizeof esecret);
@@ -89,7 +88,7 @@ x25519pubkey(char *bech, uchar pubkey[32])
 {
 	static const char goodprefix[] = "age1";
 	uchar data[BECHPUBLEN - 8];
-	size_t datalen, hrplen;
+	usize datalen, hrplen;
 	int ok;
 
 	if(strlen(bech) != BECHPUBLEN)
@@ -110,7 +109,7 @@ x25519privkey(char bech[74+1], uchar privkey[32])
 {
 	static const char goodprefix[] = "AGE-SECRET-KEY-1";
 	uchar data[BECHPRIVLEN - 8];
-	size_t datalen, hrplen;
+	usize datalen, hrplen;
 	int ok;
 
 	if(strnlen(bech, BECHPRIVLEN) != BECHPRIVLEN)

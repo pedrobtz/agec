@@ -11,7 +11,7 @@
 #include "io.h"
 #include "parse.h"
 
-static ssize_t readc(Ibuf *b, char *c);
+static ssize readc(Ibuf *b, char *c);
 static int vchar(char c);
 static int b64char(char c);
 static const char *skipspace(Ibuf *b);
@@ -26,7 +26,7 @@ static const char *x25519body(Ibuf *b, uchar out[32]);
 static const char *scryptsalt(Ibuf *b, uchar out[16]);
 static const char *scryptcost(Ibuf *b, int *cost);
 static const char *scryptbody(Ibuf *b, uchar out[32]);
-static int getb64seq(Ibuf *b, uchar *out, uchar *buf, size_t rawlen, char term);
+static int getb64seq(Ibuf *b, uchar *out, uchar *buf, usize rawlen, char term);
 
 const char *
 getversion(Ibuf *in)
@@ -34,7 +34,7 @@ getversion(Ibuf *in)
 	static const char *einval = "invalid version line";
 	static const char h[] = "age-encryption.org/v1\n";
 	char buf[sizeof(h) - 1];
-	ssize_t nr;
+	ssize nr;
 
 	nr = bread(in, buf, sizeof(buf));
 	if(nr == -1)
@@ -46,7 +46,7 @@ getversion(Ibuf *in)
 	return NULL;
 }
 
-static ssize_t
+static ssize
 readc(Ibuf *b, char *c)
 {
 	return bread(b, c, 1);
@@ -72,7 +72,7 @@ static const char *
 skipargline(Ibuf *b)
 {
 	static const char *einval = "invalid stanza optional argument";
-	ssize_t nr;
+	ssize nr;
 	int prevspace = 1;
 	char c;
 
@@ -101,7 +101,7 @@ skipargbody(Ibuf *b)
 {
 	static const char *einval = "invalid stanza body";
 	int linelen;
-	ssize_t nr;
+	ssize nr;
 	char c;
 
 	linelen = 0;
@@ -130,7 +130,7 @@ skipstanza(Ibuf *b)
 {
 	static const char *einval = "invalid stanza";
 	const char *e;
-	ssize_t nr;
+	ssize nr;
 	char c;
 
 	nr = readc(b, &c);
@@ -152,7 +152,7 @@ static const char *
 getarg(Ibuf *b, char *dest, int maxlen, int *len, int *fullread)
 {
 	static const char *einval = "invalid stanza argument";
-	ssize_t nr;
+	ssize nr;
 	char c;
 
 	*len = 0;
@@ -181,7 +181,7 @@ static const char *
 skiparg(Ibuf *b)
 {
 	static const char *einval = "invalid stanza argument";
-	ssize_t nr;
+	ssize nr;
 	char c;
 
 	for(;;) {
@@ -207,7 +207,7 @@ getstanza(Ibuf *in, Stanza *s, int *end)
 	static const char argx25519[] = "X25519";
 	char buf[sizeof(argscrypt) - 1];
 	const char *e;
-	ssize_t nr;
+	ssize nr;
 	int fullread, arglen;
 	char c;
 
@@ -303,8 +303,8 @@ scryptcost(Ibuf *b, int *cost)
 {
 	static const char *einval = "invalid scrypt work factor";
 	char buf[6];
-	ssize_t nr;
-	unsigned i;
+	ssize nr;
+	uint i;
 	char c;
 
 	for(i = 0; i < sizeof(buf) - 1; i++) {
@@ -380,11 +380,11 @@ x25519body(Ibuf *b, uchar out[32])
  * Returns 1 for success, 0 for format error, -1 for IO failure.
  */
 static int
-getb64seq(Ibuf *b, uchar *out, uchar *buf, size_t rawlen, char term)
+getb64seq(Ibuf *b, uchar *out, uchar *buf, usize rawlen, char term)
 {
-	ssize_t nr;
-	size_t outlen;
-	unsigned i;
+	ssize nr;
+	usize outlen;
+	uint i;
 	int ok;
 	char c;
 
@@ -416,7 +416,7 @@ getb64seq(Ibuf *b, uchar *out, uchar *buf, size_t rawlen, char term)
 static const char *
 skipspace(Ibuf *b)
 {
-	ssize_t nr;
+	ssize nr;
 	char c;
 
 	nr = readc(b, &c);
@@ -448,7 +448,7 @@ getmac(Ibuf *in, uchar mac[32])
 const char *
 getplnonce(Ibuf *in, uchar plnonce[16])
 {
-	ssize_t nr;
+	ssize nr;
 
 	nr = bread(in, plnonce, 16);
 	if(nr == -1)
