@@ -2,8 +2,6 @@
  * Based on public domain implementation by Wei Zhicheng:
  * https://github.com/zhicheng/base64 (commit 81060e3)
  */
-#include <unistd.h>
-
 #include "common.h"
 #include "base64.h"
 #include "util.h"

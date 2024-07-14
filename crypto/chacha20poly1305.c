@@ -1,6 +1,4 @@
 /* Public domain. Extracted from monocypher-4.0.2. */
-#include <string.h>
-
 #include "../common.h"
 #include "../util.h"
 #include "../crypto.h"

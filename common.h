@@ -1,6 +1,13 @@
+#include <assert.h>
+#include <fcntl.h>
+#include <stdarg.h>
 #include <stdint.h>
 #include <stddef.h>
+#include <stdio.h>
+#include <stdlib.h>
+#include <string.h>
 #include <sys/types.h>
+#include <unistd.h>
 
 typedef unsigned char uchar;
 typedef unsigned int uint;

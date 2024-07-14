@@ -1,6 +1,3 @@
-#include <assert.h>
-#include <string.h>
-
 #include "common.h"
 #include "base64.h"
 #include "bech32.h"

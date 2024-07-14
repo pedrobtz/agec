@@ -2,10 +2,6 @@
  * Extracted from public domain implementation "scrypt-jane":
  * https://github.com/floodyberry/scrypt-jane (commit 0ab6125)
  */
-#include <stdint.h>
-#include <stdlib.h>
-#include <string.h>
-
 #include "../common.h"
 #include "../util.h"
 #include "../crypto.h"

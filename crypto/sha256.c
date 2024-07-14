@@ -2,12 +2,6 @@
  * Public domain sha256 implementation based on fips180-3.
  * Extracted from sbase.
  */
-#include <ctype.h>
-#include <stdint.h>
-#include <stdio.h>
-#include <stdlib.h>
-#include <string.h>
-
 #include "../common.h"
 #include "../crypto.h"
 

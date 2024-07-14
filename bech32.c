@@ -2,8 +2,6 @@
  * Based on Pascal S. de Kloe's public domain implementation:
  * https://github.com/pascaldekloe/bech32 (commit 43757af)
  */
-#include <string.h>
-
 #include "common.h"
 #include "bech32.h"
 

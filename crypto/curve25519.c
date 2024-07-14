@@ -2,10 +2,6 @@
  * Public domain ref10 implementation of curve25519 from SUPERCOP.
  * Extracted from monocypher-4.0.2.
  */
-#include <stdint.h>
-#include <string.h>
-#include <unistd.h>
-
 #include "../common.h"
 #include "../util.h"
 #include "../crypto.h"

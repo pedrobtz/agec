@@ -1,5 +1,3 @@
-#include <string.h>
-
 #include "../common.h"
 #include "../util.h"
 #include "../crypto.h"
