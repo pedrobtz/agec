@@ -1,7 +1,7 @@
 enum StanzaType {
 	SCRYPT,
 	X25519,
-	UNKNOWN,
+	UNKNOWN
 };
 
 typedef struct Stanza Stanza;
@@ -10,7 +10,7 @@ struct Stanza {
 	union {
 		Scryptarg scrypt;
 		X25519arg x25519;
-	};
+	} arg;
 };
 
 const char *getversion(Ibuf *in);

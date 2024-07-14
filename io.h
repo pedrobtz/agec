@@ -16,7 +16,7 @@ struct Obuf {
 	union {
 		uchar buf[IOBUFSIZE];
 		uchar abuf[IOABUFRAWSIZE];
-	};
+	} buf;
 };
 
 /* To keep record of read bytes for MAC */

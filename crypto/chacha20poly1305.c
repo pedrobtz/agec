@@ -7,10 +7,8 @@
 #include "../util.h"
 #include "../crypto.h"
 
-#define FOR_T(type, i, start, end) for (type i = (start); i < (end); i++)
-#define FOR(i, start, end)         FOR_T(size_t, i, start, end)
-#define COPY(dst, src, size)       FOR(_i_, 0, size) (dst)[_i_] = (src)[_i_]
-#define ZERO(buf, size)            FOR(_i_, 0, size) (buf)[_i_] = 0
+#define COPY(dst, src, size)       memcpy(dst, src, size * sizeof((*dst)))
+#define ZERO(buf, size)            memset(buf, 0, size * sizeof((*buf)))
 #define WIPE_CTX(ctx)              wipe(ctx   , sizeof(*(ctx)))
 #define WIPE_BUFFER(buffer)        wipe(buffer, sizeof(buffer))
 #define MIN(a, b)                  ((a) <= (b) ? (a) : (b))
@@ -76,7 +74,10 @@ store32_le(u8 out[4], u32 in)
 
 static void
 load32_le_buf (u32 *dst, const u8 *src, size_t size) {
-	FOR(i, 0, size) { dst[i] = load32_le(src + i*4); }
+	size_t i;
+
+	for (i = 0; i < size; i++)
+		dst[i] = load32_le(src + i*4);
 }
 
 static void
@@ -117,13 +118,15 @@ verify16(const u8 a[16], const u8 b[16]){ return neq0(x16(a, b)); }
 static void
 chacha20_rounds(u32 out[16], const u32 in[16])
 {
+	int i;
+
 	/* The temporary variables make Chacha20 10% faster. */
 	u32 t0  = in[ 0]; u32 t1  = in[ 1]; u32 t2  = in[ 2]; u32 t3  = in[ 3];
 	u32 t4  = in[ 4]; u32 t5  = in[ 5]; u32 t6  = in[ 6]; u32 t7  = in[ 7];
 	u32 t8  = in[ 8]; u32 t9  = in[ 9]; u32 t10 = in[10]; u32 t11 = in[11];
 	u32 t12 = in[12]; u32 t13 = in[13]; u32 t14 = in[14]; u32 t15 = in[15];
 
-	FOR (i, 0, 10) { /* 20 rounds, 2 rounds per loop. */
+	for (i = 0; i < 10; i++) { /* 20 rounds, 2 rounds per loop. */
 		QUARTERROUND(t0, t4, t8 , t12); /* column 0 */
 		QUARTERROUND(t1, t5, t9 , t13); /* column 1 */
 		QUARTERROUND(t2, t6, t10, t14); /* column 2 */
@@ -144,19 +147,21 @@ static u64
 chacha20_djb(u8 *cipher_text, const u8 *plain_text, size_t text_size, const u8 key[32], const u8 nonce[8], u64 ctr)
 {
 	u32 input[16];
+	size_t i, j;
+
+	/* Whole blocks */
+	u32    pool[16];
+	size_t nb_blocks = text_size >> 6;
+
 	load32_le_buf(input     , chacha20_constant, 4);
 	load32_le_buf(input +  4, key              , 8);
 	load32_le_buf(input + 14, nonce            , 2);
 	input[12] = (u32) ctr;
 	input[13] = (u32)(ctr >> 32);
-
-	/* Whole blocks */
-	u32    pool[16];
-	size_t nb_blocks = text_size >> 6;
-	FOR (i, 0, nb_blocks) {
+	for (i = 0; i < nb_blocks; i++) {
 		chacha20_rounds(pool, input);
 		if (plain_text != 0) {
-			FOR (j, 0, 16) {
+			for (j = 0; j < 16; j++) {
 				u32 p = pool[j] + input[j];
 				store32_le(cipher_text,
 						p ^ load32_le(plain_text));
@@ -164,7 +169,7 @@ chacha20_djb(u8 *cipher_text, const u8 *plain_text, size_t text_size, const u8 k
 				plain_text  += 4;
 			}
 		} else {
-			FOR (j, 0, 16) {
+			for (j = 0; j < 16; j++) {
 				u32 p = pool[j] + input[j];
 				store32_le(cipher_text, p);
 				cipher_text += 4;
@@ -179,15 +184,15 @@ chacha20_djb(u8 *cipher_text, const u8 *plain_text, size_t text_size, const u8 k
 
 	/* Last (incomplete) block */
 	if (text_size > 0) {
+		u8 tmp[64];
 		if (plain_text == 0) {
 			plain_text = zero;
 		}
 		chacha20_rounds(pool, input);
-		u8 tmp[64];
-		FOR (i, 0, 16) {
+		for (i = 0; i < 16; i++) {
 			store32_le(tmp + i*4, pool[i] + input[i]);
 		}
-		FOR (i, 0, text_size) {
+		for (i = 0; i < text_size; i++) {
 			cipher_text[i] = tmp[i] ^ plain_text[i];
 		}
 		WIPE_BUFFER(tmp);
@@ -211,6 +216,8 @@ chacha20_djb(u8 *cipher_text, const u8 *plain_text, size_t text_size, const u8 k
 static void
 poly_blocks(poly1305_ctx *ctx, const u8 *in, size_t nb_blocks, unsigned end)
 {
+	u64 s0, s1, s2, s3, x0, x1, x2, x3, u0, u1, u2, u3;
+	u32 s4, x4, u4, u5;
 	/* Local all the things! */
 	const u32 r0 = ctx->r[0];
 	const u32 r1 = ctx->r[1];
@@ -226,29 +233,30 @@ poly_blocks(poly1305_ctx *ctx, const u8 *in, size_t nb_blocks, unsigned end)
 	u32 h2 = ctx->h[2];
 	u32 h3 = ctx->h[3];
 	u32 h4 = ctx->h[4];
+	size_t i;
 
-	FOR (i, 0, nb_blocks) {
+	for (i = 0; i < nb_blocks; i++) {
 		/* h + c, without carry propagation */
-		const u64 s0 = (u64)h0 + load32_le(in);  in += 4;
-		const u64 s1 = (u64)h1 + load32_le(in);  in += 4;
-		const u64 s2 = (u64)h2 + load32_le(in);  in += 4;
-		const u64 s3 = (u64)h3 + load32_le(in);  in += 4;
-		const u32 s4 =      h4 + end;
+		s0 = (u64)h0 + load32_le(in);  in += 4;
+		s1 = (u64)h1 + load32_le(in);  in += 4;
+		s2 = (u64)h2 + load32_le(in);  in += 4;
+		s3 = (u64)h3 + load32_le(in);  in += 4;
+		s4 =      h4 + end;
 
 		/* (h + c) * r, without carry propagation */
-		const u64 x0 = s0*r0+ s1*rr3+ s2*rr2+ s3*rr1+ s4*rr0;
-		const u64 x1 = s0*r1+ s1*r0 + s2*rr3+ s3*rr2+ s4*rr1;
-		const u64 x2 = s0*r2+ s1*r1 + s2*r0 + s3*rr3+ s4*rr2;
-		const u64 x3 = s0*r3+ s1*r2 + s2*r1 + s3*r0 + s4*rr3;
-		const u32 x4 =                                s4*rr4;
+		x0 = s0*r0+ s1*rr3+ s2*rr2+ s3*rr1+ s4*rr0;
+		x1 = s0*r1+ s1*r0 + s2*rr3+ s3*rr2+ s4*rr1;
+		x2 = s0*r2+ s1*r1 + s2*r0 + s3*rr3+ s4*rr2;
+		x3 = s0*r3+ s1*r2 + s2*r1 + s3*r0 + s4*rr3;
+		x4 =                                s4*rr4;
 
 		/* partial reduction modulo 2^130 - 5 */
-		const u32 u5 = x4 + (x3 >> 32); /* u5 <= 7ffffff5 */
-		const u64 u0 = (u5 >>  2) * 5 + (x0 & 0xffffffff);
-		const u64 u1 = (u0 >> 32)     + (x1 & 0xffffffff) + (x0 >> 32);
-		const u64 u2 = (u1 >> 32)     + (x2 & 0xffffffff) + (x1 >> 32);
-		const u64 u3 = (u2 >> 32)     + (x3 & 0xffffffff) + (x2 >> 32);
-		const u32 u4 = (u3 >> 32)     + (u5 & 3); /* u4 <= 4 */
+		u5 = x4 + (x3 >> 32); /* u5 <= 7ffffff5 */
+		u0 = (u5 >>  2) * 5 + (x0 & 0xffffffff);
+		u1 = (u0 >> 32)     + (x1 & 0xffffffff) + (x0 >> 32);
+		u2 = (u1 >> 32)     + (x2 & 0xffffffff) + (x1 >> 32);
+		u3 = (u2 >> 32)     + (x3 & 0xffffffff) + (x2 >> 32);
+		u4 = (u3 >> 32)     + (u5 & 3); /* u4 <= 4 */
 
 		/* Update the hash */
 		h0 = u0 & 0xffffffff;
@@ -267,26 +275,32 @@ poly_blocks(poly1305_ctx *ctx, const u8 *in, size_t nb_blocks, unsigned end)
 static void
 poly1305_init(poly1305_ctx *ctx, const u8 key[32])
 {
+	int i;
+
 	ZERO(ctx->h, 5); /* Initial hash is zero */
 	ctx->c_idx = 0;
 	/* load r and pad (r has some of its bits cleared) */
 	load32_le_buf(ctx->r  , key   , 4);
 	load32_le_buf(ctx->pad, key+16, 4);
-	FOR (i, 0, 1) { ctx->r[i] &= 0x0fffffff; }
-	FOR (i, 1, 4) { ctx->r[i] &= 0x0ffffffc; }
+	for (i = 0; i < 1; i++)
+		ctx->r[i] &= 0x0fffffff;
+	for (i = 1; i < 4; i++)
+		ctx->r[i] &= 0x0ffffffc;
 }
 
 static void
 poly1305_update(poly1305_ctx *ctx, const u8 *message, size_t message_size)
 {
+	size_t i, aligned, nb_blocks;
+
 	/* Avoid undefined NULL pointer increments with empty messages */
 	if (message_size == 0) {
 		return;
 	}
 
 	/* Align ourselves with block boundaries */
-	size_t aligned = MIN(gap(ctx->c_idx, 16), message_size);
-	FOR (i, 0, aligned) {
+	aligned = MIN(gap(ctx->c_idx, 16), message_size);
+	for (i = 0; i < aligned; i++) {
 		ctx->c[ctx->c_idx] = *message;
 		ctx->c_idx++;
 		message++;
@@ -300,13 +314,13 @@ poly1305_update(poly1305_ctx *ctx, const u8 *message, size_t message_size)
 	}
 
 	/* Process the message block by block */
-	size_t nb_blocks = message_size >> 4;
+	nb_blocks = message_size >> 4;
 	poly_blocks(ctx, message, nb_blocks, 1);
 	message      += nb_blocks << 4;
 	message_size &= 15;
 
 	/* remaining bytes (we never complete a block here) */
-	FOR (i, 0, message_size) {
+	for (i = 0; i < message_size; i++) {
 		ctx->c[ctx->c_idx] = message[i];
 		ctx->c_idx++;
 	}
@@ -315,6 +329,9 @@ poly1305_update(poly1305_ctx *ctx, const u8 *message, size_t message_size)
 static void
 poly1305_final(poly1305_ctx *ctx, u8 mac[16])
 {
+	u64 c;
+	int i;
+
 	/*
 	 * Process the last block (if any)
 	 * We move the final 1 according to remaining input length
@@ -330,15 +347,15 @@ poly1305_final(poly1305_ctx *ctx, u8 mac[16])
 	 * check if we should subtract 2^130-5 by performing the
 	 * corresponding carry propagation.
 	 */
-	u64 c = 5;
-	FOR (i, 0, 4) {
+	c = 5;
+	for (i = 0; i < 4; i++) {
 		c  += ctx->h[i];
 		c >>= 32;
 	}
 	c += ctx->h[4];
 	c  = (c >> 2) * 5; /* shift the carry back to the beginning */
 	/* c now indicates how many times we should subtract 2^130-5 (0 or 1) */
-	FOR (i, 0, 4) {
+	for (i = 0; i < 4; i++) {
 		c += (u64)ctx->h[i] + ctx->pad[i];
 		store32_le(mac + i*4, (u32)c);
 		c = c >> 32;
@@ -349,10 +366,11 @@ poly1305_final(poly1305_ctx *ctx, u8 mac[16])
 static void
 lock_auth(u8 mac[16], const u8 auth_key[32], const u8 *ad, size_t ad_size, const u8 *cipher_text, size_t text_size)
 {
-	u8 sizes[16]; /* Not secret, not wiped */
+	u8 sizes[16];                    /* Not secret, not wiped */
+	poly1305_ctx poly_ctx;           /* auto wiped... */
+
 	store64_le(sizes + 0, ad_size);
 	store64_le(sizes + 8, text_size);
-	poly1305_ctx poly_ctx;           /* auto wiped... */
 	poly1305_init  (&poly_ctx, auth_key);
 	poly1305_update(&poly_ctx, ad         , ad_size);
 	poly1305_update(&poly_ctx, zero       , gap(ad_size, 16));
@@ -391,13 +409,14 @@ chacha20poly1305read(Chacha20poly1305ctx *ctx, uchar *out, const uchar *ad, size
 	u8 auth_key[64]; /* the last 32 bytes are used for rekeying. */
 	u8 real_mac[16];
 	const u8 *mac = in + inlen - 16;
+	int mismatch;
 
 	if(inlen < 16)
 		return 1;
 	chacha20_djb(auth_key, 0, 64,
 			ctx->key, ctx->nonce, ctx->counter);
 	lock_auth(real_mac, auth_key, ad, adlen, in, inlen - 16);
-	int mismatch = verify16(mac, real_mac);
+	mismatch = verify16(mac, real_mac);
 	if (!mismatch) {
 		chacha20_djb(out, in, inlen - 16,
 				ctx->key, ctx->nonce, ctx->counter + 1);

@@ -10,10 +10,8 @@
 #include "../util.h"
 #include "../crypto.h"
 
-#define FOR_T(type, i, start, end) for (type i = (start); i < (end); i++)
-#define FOR(i, start, end)         FOR_T(size_t, i, start, end)
-#define COPY(dst, src, size)       FOR(_i_, 0, size) (dst)[_i_] = (src)[_i_]
-#define ZERO(buf, size)            FOR(_i_, 0, size) (buf)[_i_] = 0
+#define COPY(dst, src, size)       memcpy(dst, src, size * sizeof((*dst)))
+#define ZERO(buf, size)            memset(buf, 0, size * sizeof((*buf)))
 #define WIPE_BUFFER(buffer)        wipe(buffer, sizeof(buffer))
 
 typedef int8_t   i8;
@@ -25,7 +23,10 @@ typedef int64_t  i64;
 typedef uint64_t u64;
 typedef i32 fe[10];
 
-const uchar curve25519basepoint[32] = { [0] = 9 };
+const uchar curve25519basepoint[32] = {
+	9, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0,
+	0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0
+};
 
 static u32
 load24_le(const u8 s[3])
@@ -94,16 +95,49 @@ static const fe sqrtm1  = {
 static void fe_0(fe h) {           ZERO(h  , 10); }
 static void fe_1(fe h) { h[0] = 1; ZERO(h+1,  9); }
 
-static void fe_copy(fe h,const fe f           ){FOR(i,0,10) h[i] =  f[i];      }
-static void fe_neg (fe h,const fe f           ){FOR(i,0,10) h[i] = -f[i];      }
-static void fe_add (fe h,const fe f,const fe g){FOR(i,0,10) h[i] = f[i] + g[i];}
-static void fe_sub (fe h,const fe f,const fe g){FOR(i,0,10) h[i] = f[i] - g[i];}
+static void
+fe_copy(fe h, const fe f)
+{
+	int i;
+
+	for(i = 0; i < 10; i++)
+		h[i] = f[i];
+}
+
+static void
+fe_neg(fe h, const fe f)
+{
+	int i;
+
+	for (i = 0; i < 10; i++)
+		h[i] = -f[i];
+}
+
+static void
+fe_add(fe h, const fe f, const fe g)
+{
+	int i;
+
+	for (i = 0; i < 10; i++)
+		h[i] = f[i] + g[i];
+}
+
+static void
+fe_sub(fe h, const fe f, const fe g)
+{
+	int i;
+
+	for (i = 0; i < 10; i++)
+		h[i] = f[i] - g[i];
+}
 
 static void
 fe_cswap(fe f, fe g, int b)
 {
 	i32 mask = -b; /* -1 = 0xffffffff */
-	FOR (i, 0, 10) {
+	int i;
+
+	for (i = 0; i < 10; i++) {
 	        i32 x = (f[i] ^ g[i]) & mask;
 	        f[i] = f[i] ^ x;
 	        g[i] = g[i] ^ x;
@@ -114,7 +148,9 @@ static void
 fe_ccopy(fe f, const fe g, int b)
 {
 	i32 mask = -b; /* -1 = 0xffffffff */
-	FOR (i, 0, 10) {
+	int i;
+
+	for (i = 0; i < 10; i++) {
 		i32 x = (f[i] ^ g[i]) & mask;
 		f[i] = f[i] ^ x;
 	}
@@ -294,9 +330,12 @@ fe_frombytes(fe h, const u8 s[32])
 static void
 fe_tobytes(u8 s[32], const fe h)
 {
-	i32 t[10];
+	i32 t[10], q;
+	int i;
+
 	COPY(t, h, 10);
-	i32 q = (19 * t[9] + (((i32) 1) << 24)) >> 25;
+	q = (19 * t[9] + (((i32) 1) << 24)) >> 25;
+
 	/*
 	 *                 |t9|                    < 1.1 * 2^24
 	 *  -1.1 * 2^24  <  t9                     < 1.1 * 2^24
@@ -305,7 +344,7 @@ fe_tobytes(u8 s[32], const fe h)
 	 *  -2^29 / 2^25 < (19 * t9 + 2^24) / 2^25 < 2^29 / 2^25
 	 *  -16          < (19 * t9 + 2^24) / 2^25 < 16
 	 */
-	FOR (i, 0, 5) {
+	for (i = 0; i < 5; i++) {
 		q += t[2*i  ]; q >>= 26; /* q = 0 or -1 */
 		q += t[2*i+1]; q >>= 25; /* q = 0 or -1 */
 	}
@@ -315,7 +354,7 @@ fe_tobytes(u8 s[32], const fe h)
 	 * Adding q * 19 to h reduces h to its proper range.
 	 */
 	q *= 19;  /* Shift carry back to the beginning */
-	FOR (i, 0, 5) {
+	for (i = 0; i < 5; i++) {
 		t[i*2  ]+=q; q = t[i*2  ] >> 26; t[i*2  ] -= q * ((i32)1 << 26);
 		t[i*2+1]+=q; q = t[i*2+1] >> 25; t[i*2+1] -= q * ((i32)1 << 25);
 	}
@@ -487,9 +526,11 @@ fe_isequal(const fe f, const fe g)
 {
 	u8 fs[32];
 	u8 gs[32];
+	int isdifferent;
+
 	fe_tobytes(fs, f);
 	fe_tobytes(gs, g);
-	int isdifferent = crypto_verify32(fs, gs);
+	isdifferent = crypto_verify32(fs, gs);
 	WIPE_BUFFER(fs);
 	WIPE_BUFFER(gs);
 	return 1 + isdifferent;
@@ -558,6 +599,8 @@ static int
 invsqrt(fe isr, const fe x)
 {
 	fe t0, t1, t2;
+	i32 *quartic, *check;
+	int i, z0, p1, m1, ms;
 
 	/*
 	 * t0 = x^((p-5)/8)
@@ -568,25 +611,25 @@ invsqrt(fe isr, const fe x)
 	fe_sq(t1,t0);                     fe_sq(t1, t1);    fe_mul(t1, x, t1);
 	fe_mul(t0, t0, t1);
 	fe_sq(t0, t0);                                      fe_mul(t0, t1, t0);
-	fe_sq(t1, t0);  FOR (i, 1,   5) { fe_sq(t1, t1); }  fe_mul(t0, t1, t0);
-	fe_sq(t1, t0);  FOR (i, 1,  10) { fe_sq(t1, t1); }  fe_mul(t1, t1, t0);
-	fe_sq(t2, t1);  FOR (i, 1,  20) { fe_sq(t2, t2); }  fe_mul(t1, t2, t1);
-	fe_sq(t1, t1);  FOR (i, 1,  10) { fe_sq(t1, t1); }  fe_mul(t0, t1, t0);
-	fe_sq(t1, t0);  FOR (i, 1,  50) { fe_sq(t1, t1); }  fe_mul(t1, t1, t0);
-	fe_sq(t2, t1);  FOR (i, 1, 100) { fe_sq(t2, t2); }  fe_mul(t1, t2, t1);
-	fe_sq(t1, t1);  FOR (i, 1,  50) { fe_sq(t1, t1); }  fe_mul(t0, t1, t0);
-	fe_sq(t0, t0);  FOR (i, 1,   2) { fe_sq(t0, t0); }  fe_mul(t0, t0, x);
+	fe_sq(t1, t0); for(i=1; i<  5;i++){ fe_sq(t1, t1); }  fe_mul(t0, t1, t0);
+	fe_sq(t1, t0); for(i=1; i< 10;i++){ fe_sq(t1, t1); }  fe_mul(t1, t1, t0);
+	fe_sq(t2, t1); for(i=1; i< 20;i++){ fe_sq(t2, t2); }  fe_mul(t1, t2, t1);
+	fe_sq(t1, t1); for(i=1; i< 10;i++){ fe_sq(t1, t1); }  fe_mul(t0, t1, t0);
+	fe_sq(t1, t0); for(i=1; i< 50;i++){ fe_sq(t1, t1); }  fe_mul(t1, t1, t0);
+	fe_sq(t2, t1); for(i=1; i<100;i++){ fe_sq(t2, t2); }  fe_mul(t1, t2, t1);
+	fe_sq(t1, t1); for(i=1; i< 50;i++){ fe_sq(t1, t1); }  fe_mul(t0, t1, t0);
+	fe_sq(t0, t0); for(i=1; i<  2;i++){ fe_sq(t0, t0); }  fe_mul(t0, t0, x);
 
 	/* quartic = x^((p-1)/4) */
-	i32 *quartic = t1;
+	quartic = t1;
 	fe_sq (quartic, t0);
 	fe_mul(quartic, quartic, x);
 
-	i32 *check = t2;
-	fe_0  (check);          int z0 = fe_isequal(x      , check);
-	fe_1  (check);          int p1 = fe_isequal(quartic, check);
-	fe_neg(check, check );  int m1 = fe_isequal(quartic, check);
-	fe_neg(check, sqrtm1);  int ms = fe_isequal(quartic, check);
+	check = t2;
+	fe_0  (check);          z0 = fe_isequal(x      , check);
+	fe_1  (check);          p1 = fe_isequal(quartic, check);
+	fe_neg(check, check );  m1 = fe_isequal(quartic, check);
+	fe_neg(check, sqrtm1);  ms = fe_isequal(quartic, check);
 
 	/*
 	 * if quartic == -1 or sqrt(-1)
@@ -647,10 +690,11 @@ scalarmult(u8 q[32], const u8 scalar[32], const u8 p[32], int nb_bits)
 {
 	/* computes the scalar product */
 	fe x1;
-	fe_frombytes(x1, p);
-
 	/* computes the actual scalar product (the result is in x2 and z2) */
 	fe x2, z2, x3, z3, t0, t1;
+	int pos, swap;
+
+	fe_frombytes(x1, p);
 	/*
 	 *  Montgomery ladder
 	 * In projective coordinates, to avoid divisions: x = X / Z
@@ -658,8 +702,8 @@ scalarmult(u8 q[32], const u8 scalar[32], const u8 p[32], int nb_bits)
 	 */
 	fe_1(x2);        fe_0(z2); /* "zero" point */
 	fe_copy(x3, x1); fe_1(z3); /* "one"  point */
-	int swap = 0;
-	for (int pos = nb_bits-1; pos >= 0; --pos) {
+	swap = 0;
+	for (pos = nb_bits-1; pos >= 0; --pos) {
 		/* constant time conditional swap before ladder step */
 		int b = scalar_bit(scalar, pos);
 		/* xor trick avoids swapping at the end of the loop */

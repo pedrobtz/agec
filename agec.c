@@ -557,7 +557,8 @@ findx25519(uchar filekey[16], Stanza *s, Keys *ids, int *found)
 	size_t i;
 
 	for(i = 0; i < ids->len && !*found; i++) {
-		*found = x25519getkey(filekey, &s->x25519, ids->buf[i].r, &e);
+		*found = x25519getkey(filekey, &s->arg.x25519,
+				ids->buf[i].r, &e);
 		if(e)
 			return e;
 	}
@@ -597,12 +598,12 @@ scryptkey(const char *prompt, uchar filekey[16], Stanza *s)
 	char pass[512];
 	int ok;
 
-	if(s->scrypt.cost > SCRYPTMAXCOST)
+	if(s->arg.scrypt.cost > SCRYPTMAXCOST)
 		return "rejecting: scrypt work factor is too big";
 	e = getpassword(prompt, pass, sizeof(pass));
 	if(e)
 		return ewrap("failed to read passphrase", e);
-	ok = scryptgetkey(filekey, &s->scrypt, pass, &e);
+	ok = scryptgetkey(filekey, &s->arg.scrypt, pass, &e);
 	wipe(pass, sizeof(pass));
 	if(e)
 		return e;

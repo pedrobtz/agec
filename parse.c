@@ -260,13 +260,13 @@ getscrypt(Ibuf *b, Stanza *s)
 	const char *e;
 
 	s->type = SCRYPT;
-	e = scryptsalt(b, s->scrypt.salt);
+	e = scryptsalt(b, s->arg.scrypt.salt);
 	if(e)
 		return e;
-	e = scryptcost(b, &s->scrypt.cost);
+	e = scryptcost(b, &s->arg.scrypt.cost);
 	if(e)
 		return e;
-	e = scryptbody(b, s->scrypt.body);
+	e = scryptbody(b, s->arg.scrypt.body);
 	return e;
 }
 
@@ -276,10 +276,10 @@ getx25519(Ibuf *b, Stanza *s)
 	const char *e;
 
 	s->type = X25519;
-	e = x25519share(b, s->x25519.share);
+	e = x25519share(b, s->arg.x25519.share);
 	if(e)
 		return e;
-	return x25519body(b, s->x25519.body);
+	return x25519body(b, s->arg.x25519.body);
 }
 
 static const char *
