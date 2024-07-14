@@ -9,7 +9,7 @@
 
 #include "util.h"
 
-extern char *argv0;
+extern const char *argv0;
 char ebuf[512];
 
 const char *
@@ -144,4 +144,22 @@ wipe(void *buf, size_t len)
 	p = (char *)buf;
 	while(len--)
 		*p++ = 0;
+}
+
+const char *
+xprogname(const char *arg0, const char *def)
+{
+	const char *s, *last;
+
+	if(arg0 == NULL || *arg0 == '\0')
+		return def;
+	for(s = arg0, last = NULL; *s; s++) {
+		if(*s == '/')
+			last = s;
+	}
+	if(last == NULL)
+		return arg0;
+	if(last == s - 1)
+		return def;
+	return last + 1;
 }

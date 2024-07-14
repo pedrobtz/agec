@@ -5,8 +5,8 @@ OBJ_AGEC = agec.o base64.o bech32.o header.o io.o keyenc.o parse.o \
 	crypto/scrypt.o crypto/sha256.o
 OBJ_KEYGEN = bech32.o keygen.o util.o crypto/curve25519.o crypto/random.o
 OBJS = $(OBJ_AGEC) $(OBJ_KEYGEN)
-TESTS = test/unit/base64.o test/unit/bech32.o
-OBJ_TEST = base64.o bech32.o
+TESTS = test/unit/base64.o test/unit/bech32.o test/unit/util.o
+OBJ_TEST = base64.o bech32.o util.o
 TESTTMP = test/unit/main test/unit/main.o test/unit/*.c \
 	test/vectors/body test/vectors/out test/vectors/priv
 PREFIX = /usr/local

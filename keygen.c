@@ -1,6 +1,5 @@
 #include <ctype.h>
 #include <errno.h>
-#include <libgen.h>
 #include <stdarg.h>
 #include <stdint.h>
 #include <stdio.h>
@@ -17,7 +16,7 @@
 #define BECHPUBLEN  62
 #define BECHPRIVLEN 74
 
-char *argv0;
+const char *argv0;
 
 typedef struct Keypair Keypair;
 struct Keypair {
@@ -388,7 +387,7 @@ main(int argc, char *argv[])
 {
 	Keypair kp;
 
-	argv0 = argv[0] ? basename(argv[0]) : "agec-keygen";
+	argv0 = xprogname(argv[0], "agec-keygen");
 	if(argc == 1) {
 		kp = genkey();
 		print(kp);

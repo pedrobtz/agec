@@ -1,6 +1,5 @@
 #include <errno.h>
 #include <fcntl.h>
-#include <libgen.h>
 #include <stdint.h>
 #include <stdio.h>
 #include <stdlib.h>
@@ -67,7 +66,7 @@ static const char *decipher(Ibuf *in, Obuf *out, Keys *ids);
 static int getopts(int argc, char **argv, Keys *recs, Opts *opts);
 static int validopts(Opts *opts, Keys *recs);
 
-char *argv0;
+const char *argv0;
 
 static void
 usage(void)
@@ -693,7 +692,7 @@ main(int argc, char *argv[])
 	const char *e = NULL;
 	int optshift, fd;
 
-	argv0 = argv[0] ? basename(argv[0]) : "agec";
+	argv0 = xprogname(argv[0], "agec");
 	e = keyinit(&recs);
 	if(e)
 		die(e);
