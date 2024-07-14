@@ -1,3 +1,5 @@
+void eset(const char *err);
+const char *eget(void);
 const char *ewrap(const char *outer, const char *inner);
 const char *esys(const char *outer);
 const char *efmt(const char *fmt, ...);

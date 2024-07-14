@@ -2,7 +2,6 @@
  * Extracted from public domain implementation "scrypt-jane":
  * https://github.com/floodyberry/scrypt-jane (commit 0ab6125)
  */
-#include <errno.h>
 #include <stdint.h>
 #include <stdlib.h>
 #include <string.h>
@@ -42,7 +41,7 @@ alloc(uint64 size, const char **err)
 	aa.mem = malloc((usize)size);
 	aa.ptr = (uchar *)(((usize)aa.mem + (BLOCKBYTES-1)) & ~(BLOCKBYTES-1));
 	if(!aa.mem)
-		*err = strerror(errno);
+		*err = eget();
 	return aa;
 }
 

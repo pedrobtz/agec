@@ -1,4 +1,3 @@
-#include <errno.h>
 #include <stdarg.h>
 #include <stdio.h>
 #include <stdlib.h>
@@ -19,7 +18,7 @@ hdrinit(Header *h)
 {
 	h->data = malloc(HDRINITLEN);
 	if(h->data == NULL)
-		return strerror(errno);
+		return eget();
 	h->allocated = HDRINITLEN;
 	h->len = 0;
 	return NULL;

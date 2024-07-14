@@ -1,5 +1,4 @@
 #include <ctype.h>
-#include <errno.h>
 #include <stdarg.h>
 #include <stdio.h>
 #include <stdlib.h>
@@ -200,7 +199,7 @@ printpub(Output *out, uchar pub[BECHPUBLEN + 1])
 		goto fail;
 	return;
 fail:
-	dief("failed to write: %s", strerror(errno));
+	dief("failed to write: %s", eget());
 }
 
 static void
@@ -216,7 +215,7 @@ printpriv(Output *out, uchar priv[BECHPRIVLEN + 1])
 		goto fail;
 	return;
 fail:
-	dief("failed to write: %s", strerror(errno));
+	dief("failed to write: %s", eget());
 }
 
 static void
@@ -233,7 +232,7 @@ print(Keypair kp)
 	printpriv(&out, priv);
 	nr = bflush(&out);
 	if(nr == -1)
-		dief("failed to write: %s", strerror(errno));
+		dief("failed to write: %s", eget());
 	wipe(pub, sizeof pub);
 	wipe(priv, sizeof priv);
 	wipe(&out, sizeof out);

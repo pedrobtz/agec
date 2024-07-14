@@ -1,4 +1,3 @@
-#include <errno.h>
 #include <fcntl.h>
 #include <stdio.h>
 #include <stdlib.h>
@@ -84,10 +83,8 @@ keyinit(Keys *keys)
 	keys->len = 0;
 	keys->capacity = 32;
 	keys->buf = malloc(keys->capacity * sizeof(Key));
-	if(keys->buf == NULL) {
-		return ewrap("failed to initialize key buffer",
-				strerror(ENOMEM));
-	}
+	if(keys->buf == NULL)
+		return ewrap("failed to initialize key buffer", eget());
 	return NULL;
 }
 
@@ -242,7 +239,7 @@ getkey(void *b, Keys *privs, int encrypted, const char **err)
 		return -2;
 	nr = encrypted ? plread((Ebuf *)b, &c, 1) : bread((Ibuf *)b, &c, 1);
 	if(nr == -1) {
-		*err = ioerror(errno);
+		*err = eget();
 		return -1;
 	}
 	if(nr == 1 && c != '\n')
@@ -267,13 +264,13 @@ readprivkeys(void *b, Keys *privs, int encrypted)
 	for(lineno = 1; ; lineno++) {
 		nr = encrypted ? plpeek((Ebuf *)b, &c) : bpeek((Ibuf *)b, &c);
 		if(nr == -1)
-			return ioerror(errno);
+			return eget();
 		if(nr == 0)
 			break;
 		if(c == '#') {
 			nr = skipline(b, encrypted);
 			if(nr == -1)
-				return ioerror(errno);
+				return eget();
 			if(nr == 0)
 				break;
 			continue;
@@ -338,7 +335,7 @@ checkencrypted(Ibuf *ib, Ebuf *eb, const char **err)
 	*err = NULL;
 	nr = bpeek(ib, &c);
 	if(nr == -1) {
-		*err = ewrap("failed to read key file", ioerror(errno));
+		*err = ewrap("failed to read key file", eget());
 		return 0;
 	}
 	if(nr == 0 || c != 'a')
@@ -436,11 +433,11 @@ writehdr(Obuf *out, Header *h)
 	if(out->isarmor) {
 		nw = writeall(out->fd, armorfirst, sizeof(armorfirst) - 1);
 		if(nw == -1)
-			return strerror(errno);
+			return eget();
 	}
 	nw = bwrite(out, h->data, h->len);
 	if(nw == -1)
-		return strerror(errno);
+		return eget();
 	return NULL;
 }
 
@@ -457,7 +454,7 @@ writebody(Obuf *out, Ibuf *in, uchar filekey[16])
 	if(out->isarmor) {
 		nw = writeall(out->fd, armorlast, sizeof(armorlast) - 1);
 		if(nw == -1)
-			return strerror(errno);
+			return eget();
 	}
 	return NULL;
 }
@@ -504,7 +501,7 @@ validmac(Ibuf *in, uchar filekey[16], int *isvalid)
 
 	data = recstop(in, &len);
 	if(data == NULL)
-		return strerror(errno);
+		return eget();
 	e = getmac(in, mac1);
 	if(e)
 		return e;

@@ -1,4 +1,3 @@
-#include <errno.h>
 #include <stdio.h>
 #include <string.h>
 
@@ -16,6 +15,9 @@ static int eof(Ibuf *b);
 static const char *incnonce(uchar nonce[12]);
 static usize encchunk(Data in, uchar key[32], uchar nonce[12], uchar *out);
 static usize decchunk(Data in, uchar key[32], uchar nonce[12], uchar *out);
+
+static const char eemptychunk[] = "format error: final chunk is empty";
+static const char enonceoverflow[] = "nonce overflow";
 
 void
 payloadkey(uchar filekey[16], uchar nonce[16], uchar plkey[32])
@@ -43,17 +45,17 @@ plencrypt(Ibuf *in, Obuf *out, uchar plkey[32])
 			return e;
 		nr = bread(in, inbuf, CHUNKLEN);
 		if(nr == -1)
-			return ioerror(errno);
+			return eget();
 		last = eof(in);
 		if(last == -1)
-			return ioerror(errno);
+			return eget();
 		ichunk.len = nr;
 		if(last)
 			nonce[11] = 1;
 		outlen = encchunk(ichunk, plkey, nonce, outbuf);
 		nw = bwrite(out, outbuf, outlen);
 		if(nw == -1)
-			return strerror(errno);
+			return eget();
 	}
 	return NULL;
 }
@@ -118,21 +120,21 @@ pldecrypt(Ibuf *in, Obuf *out, uchar plkey[32])
 			return e;
 		nr = bread(in, inbuf, sizeof(inbuf));
 		if(nr == -1)
-			return ioerror(errno);
+			return eget();
 		last = eof(in);
 		if(last == -1)
-			return ioerror(errno);
+			return eget();
 		if(last && i > 0 && nr == TAGLEN)
-			return ioerror(EEMPTYCHUNK);
+			return eemptychunk;
 		ichunk.len = nr;
 		if(last)
 			nonce[11] = 1;
 		outlen = decchunk(ichunk, plkey, nonce, outbuf);
 		if(outlen == ~(usize)0)
-			return ioerror(errno);
+			return eget();
 		nw = bwrite(out, outbuf, outlen);
 		if(nw == -1)
-			return strerror(errno);
+			return eget();
 	}
 	return NULL;
 }
@@ -146,7 +148,7 @@ decchunk(Data in, uchar key[32], uchar nonce[12], uchar *out)
 	chacha20poly1305init(&ctx, key, nonce);
 	fail = chacha20poly1305read(&ctx, out, NULL, 0, in.data, in.len);
 	if(fail) {
-		errno = EDECRYPT;
+		eset("failed to decrypt and authenticate payload");
 		return ~(usize)0;
 	}
 	wipe(&ctx, sizeof(ctx));
@@ -193,7 +195,7 @@ plread(Ebuf *b, void *buf, usize nbytes)
 				b->nonce[11] = 1;
 			nr = bread(b->in, b->ibuf, sizeof(b->ibuf));
 			if(last && b->nchunk > 0 && nr == TAGLEN) {
-				errno = EEMPTYCHUNK;
+				eset(eemptychunk);
 				return -1;
 			}
 			if(nr == -1)
@@ -207,7 +209,7 @@ plread(Ebuf *b, void *buf, usize nbytes)
 				return -1;
 			e = incnonce(b->nonce);
 			if(e) {
-				errno = EOVERFLOW;
+				eset(enonceoverflow);
 				return -1;
 			}
 		}
@@ -251,7 +253,7 @@ plpeek(Ebuf *b, char *c)
 		return -1;
 	e = incnonce(b->nonce);
 	if(e) {
-		errno = EOVERFLOW;
+		eset(enonceoverflow);
 		return -1;
 	}
 	*c = b->obuf[0];

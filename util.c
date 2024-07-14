@@ -13,6 +13,21 @@
 extern const char *argv0;
 char ebuf[512];
 
+void
+eset(const char *err)
+{
+	strncpy(ebuf, err, sizeof(ebuf) - 1);
+	ebuf[sizeof(ebuf) - 1] = '\0';
+}
+
+const char *
+eget(void)
+{
+	if(*ebuf)
+		return ebuf;
+	return strerror(errno);
+}
+
 const char *
 ewrap(const char *outer, const char *inner)
 {

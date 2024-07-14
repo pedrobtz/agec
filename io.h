@@ -31,7 +31,8 @@ struct Ibuf {
 	int fd;
 	int eof;
 	int isarmor;
-	int recording, recfail;
+	int recording;
+	const char *recfail;
 	usize cur, size;
 	usize acur, asize;
 	int aendpos;

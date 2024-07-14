@@ -1,5 +1,4 @@
 #include <assert.h>
-#include <errno.h>
 #include <stdlib.h>
 #include <string.h>
 #include <unistd.h>
@@ -155,7 +154,7 @@ ibinit(Ibuf *b, int fd)
 	b->eof = 0;
 	b->fd = fd;
 	b->recording = 1;
-	b->recfail = 0;
+	b->recfail = NULL;
 	b->rec.len = b->rec.capacity = 0;
 	b->isarmor = UNCHECKED;
 }
@@ -198,7 +197,7 @@ bread(Ibuf *b, void *buf, usize nbytes)
 			if(nr == -1)
 				return -1;
 			if(nr == -2) {
-				errno = EBADARMOR;
+				eset("armor format error");
 				return -1;
 			}
 			if(nr == 0) {
@@ -373,7 +372,7 @@ recappend(Ibuf *b, void *buf, usize len)
 	if(len > 0 && b->rec.capacity == 0) {
 		b->rec.buf = malloc(RECINITLEN);
 		if(b->rec.buf == NULL) {
-			b->recfail = ENOMEM;
+			b->recfail = eget();
 			return;
 		}
 		b->rec.capacity = RECINITLEN;
@@ -383,14 +382,14 @@ recappend(Ibuf *b, void *buf, usize len)
 		while(b->rec.len + len > ncap) {
 			ncap *= 2;
 			if(ncap < cap) {
-				b->recfail = EOVERFLOW;
+				b->recfail = "Allocation length overflow";
 				return;
 			}
 			cap = ncap;
 		}
 		b->rec.buf = realloc(b->rec.buf, ncap);
 		if(b->rec.buf == NULL) {
-			b->recfail = ENOMEM;
+			b->recfail = eget();
 			return;
 		}
 		b->rec.capacity = ncap;
@@ -404,7 +403,7 @@ recstop(Ibuf *b, usize *len)
 {
 	b->recording = 0;
 	if(b->recfail) {
-		errno = b->recfail;
+		eset(b->recfail);
 		return NULL;
 	}
 	if(b->rec.capacity == 0) {
