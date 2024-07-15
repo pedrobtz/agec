@@ -5,8 +5,8 @@ OBJ_AGEC = agec.o base64.o bech32.o header.o io.o keyenc.o parse.o \
 	payload.o scrypt.o util.o x25519.o crypto/chacha20poly1305.o \
 	crypto/curve25519.o crypto/hkdf.o crypto/hmac.o crypto/scrypt.o \
 	crypto/sha256.o $(OS)/util.o $(OS)/random.o
-OBJ_KEYGEN = bech32.o keygen.o util.o crypto/curve25519.o $(OS)/random.o \
-	$(OS)/util.o
+OBJ_KEYGEN = bech32.o agec-keygen.o util.o crypto/curve25519.o \
+	$(OS)/random.o $(OS)/util.o
 OBJS = $(OBJ_AGEC) $(OBJ_KEYGEN)
 TESTS = test/unit/base64.o test/unit/bech32.o test/unit/util.o
 OBJ_TEST = base64.o bech32.o util.o
@@ -67,7 +67,7 @@ agec.o:		$(OS)/common.h arg.h base64.h crypto.h header.h io.h parse.h \
 header.o:	header.h $(OS)/common.h base64.h crypto.h util.h
 io.o:		io.h $(OS)/common.h base64.h util.h
 keyenc.o:	keyenc.h $(OS)/common.h crypto.h util.h
-keygen.o:	bech32.h $(OS)/common.h crypto.h util.h
+agec-keygen.o:	bech32.h $(OS)/common.h crypto.h util.h
 parse.o:	parse.h $(OS)/common.h base64.h header.h io.h scrypt.h \
 		x25519.h util.h
 payload.o:	payload.h $(OS)/common.h base64.h util.h io.h crypto.h
