@@ -240,12 +240,16 @@ poly_blocks(poly1305_ctx *ctx, const u8 *in, usize nb_blocks, uint end)
 		s4 =      h4 + end;
 
 		/* (h + c) * r, without carry propagation */
-		x0 = s0*r0+ s1*rr3+ s2*rr2+ s3*rr1+ s4*rr0;
-		x1 = s0*r1+ s1*r0 + s2*rr3+ s3*rr2+ s4*rr1;
-		x2 = s0*r2+ s1*r1 + s2*r0 + s3*rr3+ s4*rr2;
-		x3 = s0*r3+ s1*r2 + s2*r1 + s3*r0 + s4*rr3;
-		x4 =                                s4*rr4;
-
+		/*
+		 * Expressions are splitted as a workaround for
+		 * the Plan 9's 386 compiler.
+		 */
+		x0 = s0*r0 + s1*rr3; x0 += s2*rr2 + s3*rr1; x0 += s4*rr0;
+		x1 = s0*r1 + s1*r0;  x1 += s2*rr3 + s3*rr2; x1 += s4*rr1;
+		x2 = s0*r2 + s1*r1;  x2 += s2*r0  + s3*rr3; x2 += s4*rr2;
+		x3 = s0*r3 + s1*r2;  x3 += s2*r1  + s3*r0 ; x3 += s4*rr3;
+		x4 =                                              s4*rr4;
+		
 		/* partial reduction modulo 2^130 - 5 */
 		u5 = x4 + (x3 >> 32); /* u5 <= 7ffffff5 */
 		u0 = (u5 >>  2) * 5 + (x0 & 0xffffffff);
