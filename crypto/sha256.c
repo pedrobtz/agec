@@ -2,8 +2,8 @@
  * Public domain sha256 implementation based on fips180-3.
  * Extracted from sbase.
  */
-#include "../common.h"
-#include "../crypto.h"
+#include "common.h"
+#include "crypto.h"
 
 static uint32 ror(uint32 n, int k) { return (n >> k) | (n << (32-k)); }
 #define Ch(x,y,z)  (z ^ (x & (y ^ z)))

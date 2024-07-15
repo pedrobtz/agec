@@ -1,6 +1,6 @@
-#include "../common.h"
-#include "../util.h"
-#include "../crypto.h"
+#include "common.h"
+#include "util.h"
+#include "crypto.h"
 
 void
 hmacsha256(const uchar *k, usize klen, const uchar *in, usize inlen, uchar out[32])

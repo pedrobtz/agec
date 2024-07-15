@@ -34,7 +34,7 @@ stanza(Header *h, uchar filekey[16], char *pass, uchar *salt)
 	uchar key[32];
 	uchar body[32], b64body[B64EBUFLEN(32) + 1];
 	const char *e;
-	size_t outlen;
+	usize outlen;
 
 	base64encode(salt, b64salt, SALTLEN, &outlen, 0);
 	b64salt[sizeof(b64salt) - 1] = '\0';

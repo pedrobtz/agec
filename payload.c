@@ -5,9 +5,6 @@
 #include "io.h"
 #include "payload.h"
 
-#define CHUNKLEN 64*1024
-#define TAGLEN   16      /* poly1305 authentication tag */
-
 static int eof(Ibuf *b);
 static const char *incnonce(uchar nonce[12]);
 static usize encchunk(Data in, uchar key[32], uchar nonce[12], uchar *out);
@@ -35,7 +32,6 @@ plencrypt(Ibuf *in, Obuf *out, uchar plkey[32])
 	ssize nr, nw;
 	int last;
 
-	outlen = sizeof(outbuf);
 	ichunk.data = inbuf;
 	for(last = 0; !last; e = incnonce(nonce)) {
 		if(e)

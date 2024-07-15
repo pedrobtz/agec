@@ -1,25 +1,17 @@
-#include <errno.h>
-#include <termios.h>
+//#include <errno.h>
+//#include <termios.h>
 
 #include "common.h"
 #include "util.h"
 
 extern const char *argv0;
-char ebuf[512];
+char ebuf[EBUFSIZE];
 
 void
 eset(const char *err)
 {
 	strncpy(ebuf, err, sizeof(ebuf) - 1);
 	ebuf[sizeof(ebuf) - 1] = '\0';
-}
-
-const char *
-eget(void)
-{
-	if(*ebuf)
-		return ebuf;
-	return strerror(errno);
 }
 
 const char *
@@ -48,7 +40,7 @@ ewrap(const char *outer, const char *inner)
 const char *
 esys(const char *outer)
 {
-	return ewrap(outer, strerror(errno));
+	return ewrap(outer, eget());
 }
 
 const char *
@@ -63,13 +55,6 @@ efmt(const char *fmt, ...)
 	return ebuf;
 }
 
-void
-die(const char *msg)
-{
-	fprintf(stderr, "%s: %s\n", argv0, msg);
-	exit(1);
-}
-
 void *
 reallocarr(void *p, usize nmemb, usize size)
 {
@@ -77,12 +62,13 @@ reallocarr(void *p, usize nmemb, usize size)
 
 	n = nmemb * size;
 	if(nmemb > 0 && n / nmemb != size) {
-		errno = EOVERFLOW;
+		eset("allocation length overflow");
 		return NULL;
 	}
 	return realloc(p, n);
 }
 
+/*
 static const char *
 readpass(int fd, char *buf, usize len)
 {
@@ -110,8 +96,10 @@ readpass(int fd, char *buf, usize len)
 	(void)write(fd, "\n", 1);
 	return NULL;
 }
+*/
 
 /* TODO: consider the need to mess with signals */
+/*
 const char *
 getpassword(const char *prompt, char *buf, usize len)
 {
@@ -145,6 +133,7 @@ out:
 	close(fd);
 	return e;
 }
+*/
 
 void
 wipe(void *buf, usize len)

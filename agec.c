@@ -1,4 +1,5 @@
 #include "common.h"
+#include "arg.h"
 #include "crypto.h"
 #include "base64.h"
 #include "header.h"
@@ -55,7 +56,7 @@ static const char *scryptkey(const char *prompt, uchar filekey[16], Stanza *s);
 static const char *findx25519(uchar filekey[16], Stanza *s, Keys *ids, int *found);
 static const char *match(Ibuf *in, uchar filekey[16], Stanza *s, Keys *ids, int *found);
 static const char *decipher(Ibuf *in, Obuf *out, Keys *ids);
-static int getopts(int argc, char **argv, Keys *recs, Opts *opts);
+static int getopts(char **argv, Keys *recs, Opts *opts);
 static int validopts(Opts *opts, Keys *recs);
 
 const char *argv0;
@@ -68,7 +69,7 @@ usage(void)
 			"\t%s -p [-a] [file]\n"
 			"\t%s -d [-i keyfile] [file]\n",
 			argv0, argv0, argv0);
-	exit(1);
+	exitusage();
 }
 
 static const char *
@@ -293,7 +294,7 @@ getprivkeys(Keys *privs, const char *path)
 	Ebuf eb;
 	void *in = &ib;
 	const char *e;
-	int fd, encrypted = 0;
+	int fd, encrypted;
 
 	fd = open(path, O_RDONLY);
 	if(fd == -1)
@@ -368,7 +369,7 @@ static const char *
 matchscrypt(Ibuf *ib, Stanza *s)
 {
 	uchar filekey[16];
-	const char *e = NULL;
+	const char *e;
 	Keys nilkeys;
 	int found;
 
@@ -616,14 +617,14 @@ validatemac(Ibuf *in, uchar filekey[16])
 }
 
 static int
-getopts(int argc, char **argv, Keys *recs, Opts *opts)
+getopts(char **argv, Keys *recs, Opts *opts)
 {
 	const char *e;
-	int ch;
+	char **start, *arg;
 
 	memset(opts, 0, sizeof(*opts));
-	while((ch = getopt(argc, argv, "adi:pr:")) != -1) {
-		switch(ch) {
+	start = argv;
+	XARGBEGIN {
 		case 'a':
 			opts->isarmor = 1;
 			break;
@@ -635,13 +636,18 @@ getopts(int argc, char **argv, Keys *recs, Opts *opts)
 				keyfree(recs);
 				usage();
 			}
-			opts->idpath = optarg;
+			opts->idpath = XARGF();
+			if(opts->idpath == NULL)
+				usage();
 			break;
 		case 'p':
 			opts->pflag = 1;
 			break;
 		case 'r':
-			e = recadd(recs, optarg);
+			arg = XARGF();
+			if(arg == NULL)
+				usage();
+			e = recadd(recs, arg);
 			if(e) {
 				keyfree(recs);
 				die(e);
@@ -650,9 +656,8 @@ getopts(int argc, char **argv, Keys *recs, Opts *opts)
 		default:
 			keyfree(recs);
 			usage();
-		}
-	}
-	return optind;
+	} XARGEND
+	return argv - start;
 }
 
 static int
@@ -679,14 +684,14 @@ main(int argc, char *argv[])
 	Obuf ob;
 	Opts opts;
 	Keys recs, ids;
-	const char *e = NULL;
+	const char *e;
 	int optshift, fd;
 
 	argv0 = xprogname(argv[0], "agec");
 	e = keyinit(&recs);
 	if(e)
 		die(e);
-	optshift = getopts(argc, argv, &recs, &opts);
+	optshift = getopts(argv, &recs, &opts);
 	if(!validopts(&opts, &recs))
 		goto badusage;
 	argc -= optshift;
@@ -732,4 +737,5 @@ badusage:
 	wipe(&ob, sizeof(ob));
 	keyfree(&recs);
 	usage();
+	return 1;
 }

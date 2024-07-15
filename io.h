@@ -51,4 +51,3 @@ ssize bflush(Obuf *b);
 ssize bread(Ibuf *b, void *buf, usize n);
 ssize bpeek(Ibuf *b, char *c);
 uchar *recstop(Ibuf *b, usize *len);
-const char *ioerror(int errn);

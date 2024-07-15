@@ -377,7 +377,7 @@ recappend(Ibuf *b, void *buf, usize len)
 		while(b->rec.len + len > ncap) {
 			ncap *= 2;
 			if(ncap < cap) {
-				b->recfail = "Allocation length overflow";
+				b->recfail = "allocation length overflow";
 				return;
 			}
 			cap = ncap;
@@ -409,16 +409,4 @@ recstop(Ibuf *b, usize *len)
 		*len = b->rec.len;
 		return b->rec.buf;
 	}
-}
-
-const char *
-ioerror(int errn)
-{
-	if(errn == EBADARMOR)
-		return "armor format error";
-	else if(errn == EDECRYPT)
-		return "failed to decrypt and authenticate payload";
-	else if(errn == EEMPTYCHUNK)
-		return "format error: final chunk is empty";
-	return strerror(errn);
 }

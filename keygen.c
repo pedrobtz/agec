@@ -1,10 +1,3 @@
-#include <ctype.h>
-#include <stdarg.h>
-#include <stdio.h>
-#include <stdlib.h>
-#include <string.h>
-#include <unistd.h>
-
 #include "common.h"
 #include "bech32.h"
 #include "crypto.h"
@@ -124,20 +117,20 @@ static void
 usage(void)
 {
 	fprintf(stderr, "usage: %s [-y]\n", argv0);
-	exit(1);
+	exitusage();
 }
 
 static void
 dief(const char *fmt, ...)
 {
+	char msg[512];
 	va_list l;
 
 	va_start(l, fmt);
-	fprintf(stderr, "%s: ", argv0);
-	vfprintf(stderr, fmt, l);
-	fprintf(stderr, "\n");
+	vsnprintf(msg, sizeof(msg) - 1, fmt, l);
+	msg[sizeof(msg) - 1] = '\0';
 	va_end(l);
-	exit(1);
+	die(msg);
 }
 
 static Keypair
@@ -186,7 +179,7 @@ printpub(Output *out, uchar pub[BECHPUBLEN + 1])
 	static const char head[] = "# public key: ";
 	ssize nr;
 
-	if(!isatty(1))
+	if(!xisatty(1))
 		fprintf(stderr, "Public key: %s\n", pub);
 	nr = bwrite(out, (void *)head, sizeof(head) - 1);
 	if(nr == -1)
@@ -219,7 +212,7 @@ fail:
 }
 
 static void
-print(Keypair kp)
+printkp(Keypair kp)
 {
 	Output out;
 	uchar pub[BECHPUBLEN + 1];
@@ -388,7 +381,7 @@ main(int argc, char *argv[])
 	argv0 = xprogname(argv[0], "agec-keygen");
 	if(argc == 1) {
 		kp = genkey();
-		print(kp);
+		printkp(kp);
 		wipe(&kp, sizeof(kp));
 	} else if(argc == 2 && strcmp(argv[1], "-y") == 0) {
 		filekeys();

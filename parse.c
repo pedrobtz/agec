@@ -170,7 +170,6 @@ getarg(Ibuf *b, char *dest, int maxlen, int *len, int *fullread)
 		*dest = c;
 		(void)readc(b, &c); /* not possible to fail after bpeek() */
 	}
-	return NULL; /* not reached */
 }
 
 static const char *

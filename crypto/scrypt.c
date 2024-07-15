@@ -2,9 +2,9 @@
  * Extracted from public domain implementation "scrypt-jane":
  * https://github.com/floodyberry/scrypt-jane (commit 0ab6125)
  */
-#include "../common.h"
-#include "../util.h"
-#include "../crypto.h"
+#include "common.h"
+#include "util.h"
+#include "crypto.h"
 
 #define DIGESTSIZE 32
 #define BLOCKBYTES 64

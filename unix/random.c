@@ -1,6 +1,6 @@
 #include <openssl/rand.h>
 
-#include "../common.h"
+#include "common.h"
 
 int
 randombuf(uchar *buf, int len)

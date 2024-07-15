@@ -23,7 +23,7 @@ x25519stanza(Header *h, uchar filekey[16], uchar pubkey[32])
 	uchar esecret[32], share[32];
 	uchar b64share[B64EBUFLEN(sizeof(share)) + 1];
 	uchar b[32], b64body[B64EBUFLEN(32) + 1];
-	const char *e = NULL;
+	const char *e;
 	usize outlen;
 	int ok;
 
@@ -109,8 +109,6 @@ x25519privkey(char bech[74+1], uchar privkey[32])
 	usize datalen, hrplen;
 	int ok;
 
-	if(strnlen(bech, BECHPRIVLEN) != BECHPRIVLEN)
-		return 0;
 	bech[74] = '\0';
 	if(memcmp(bech, goodprefix, sizeof(goodprefix) - 1) != 0)
 		return 0;

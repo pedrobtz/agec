@@ -1,6 +1,6 @@
-#include "../common.h"
-#include "../util.h"
-#include "../crypto.h"
+#include "common.h"
+#include "util.h"
+#include "crypto.h"
 
 /* Implemented only for 32 byte output */
 void

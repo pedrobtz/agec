@@ -1,7 +1,7 @@
 /* Public domain. Extracted from monocypher-4.0.2. */
-#include "../common.h"
-#include "../util.h"
-#include "../crypto.h"
+#include "common.h"
+#include "util.h"
+#include "crypto.h"
 
 #define COPY(dst, src, size)       memcpy(dst, src, size * sizeof((*dst)))
 #define ZERO(buf, size)            memset(buf, 0, size * sizeof((*buf)))
