@@ -226,9 +226,9 @@ printkp(Keypair kp)
 	nr = bflush(&out);
 	if(nr == -1)
 		dief("failed to write: %s", eget());
-	wipe(pub, sizeof pub);
-	wipe(priv, sizeof priv);
-	wipe(&out, sizeof out);
+	wipe(pub, sizeof(pub));
+	wipe(priv, sizeof(priv));
+	wipe(&out, sizeof(out));
 }
 
 static ssize

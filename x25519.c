@@ -27,7 +27,7 @@ x25519stanza(Header *h, uchar filekey[16], uchar pubkey[32])
 	usize outlen;
 	int ok;
 
-	ok = randombuf(esecret, sizeof esecret);
+	ok = randombuf(esecret, sizeof(esecret));
 	if(!ok)
 		return "failed to generate ephemeral secret";
 	ok = x25519(share, esecret, curve25519basepoint);
@@ -35,7 +35,7 @@ x25519stanza(Header *h, uchar filekey[16], uchar pubkey[32])
 		e = ezeroresult;
 		goto out;
 	}
-	base64encode(share, b64share, sizeof share, &outlen, 0);
+	base64encode(share, b64share, sizeof(share), &outlen, 0);
 	b64share[sizeof(b64share) - 1] = '\0';
 	e = hdrappend(h, "-> X25519 %s\n", b64share);
 	if(e)
@@ -47,7 +47,7 @@ x25519stanza(Header *h, uchar filekey[16], uchar pubkey[32])
 	b64body[sizeof(b64body) - 1] = '\0';
 	e = hdrappend(h, "%s\n", b64body);
 out:
-	wipe(esecret, sizeof esecret);
+	wipe(esecret, sizeof(esecret));
 	return e;
 }
 
@@ -64,7 +64,7 @@ body(uchar share[32], uchar esecret[32], uchar pubkey[32], uchar filekey[16], uc
 	}
 	wrap(wrapkey, share, secret, pubkey);
 	keyenc(wrapkey, filekey, out);
-	wipe(secret, sizeof secret);
+	wipe(secret, sizeof(secret));
 	return NULL;
 }
 

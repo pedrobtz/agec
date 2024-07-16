@@ -27,8 +27,8 @@ hdrappend(Header *h, char *fmt, ...)
 	int ret;
 	
 	va_start(l, fmt);
-	ret = vsnprintf(buf, sizeof buf, fmt, l);
-	if(ret < 0 || (usize)ret >= sizeof buf)
+	ret = vsnprintf(buf, sizeof(buf), fmt, l);
+	if(ret < 0 || (usize)ret >= sizeof(buf))
 		return "buffer overflow";
 	if(h->len + ret >= h->allocated) {
 		h->allocated = h->len + ret + 1;
@@ -49,7 +49,7 @@ hdrmac(uchar *data, usize len, uchar filekey[16], char *out, usize *outlen)
 	uchar md[32];
 
 	mac(data, len, filekey, md);
-	base64encode(md, (uchar *)out, sizeof md, outlen, 0);
+	base64encode(md, (uchar *)out, sizeof(md), outlen, 0);
 }
 
 void
