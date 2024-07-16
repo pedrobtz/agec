@@ -1,0 +1,82 @@
+agec is a simple file encryption tool that implements age format[1]
+in C with minimal dependencies. The tool supports asymmetric
+encryption based on X25519, and a passphrase encryption based on
+scrypt.
+
+For other implementations, tools, etc., see awesome-age list[2].
+
+[1]: https://age-encryption.org
+[2]: https://github.com/FiloSottile/awesome-age
+
+Building and installing
+-----------------------
+
+On Unix-like systems the only library dependency apart from libc
+is OpenSSL, which is used for portable random function. So to ditch
+it you just need to edit unix/random.c file; that's straightforward
+if you know the target system.
+
+To build the utility run 'make' and to install run 'make install'.
+
+On Plan 9 systems agec utilizes libc, libstdio and libsec; all of
+them are available in the default install. To build and install
+use mk(1). No apes are required.
+
+Examples
+--------
+
+Encrypt and decrypt the secret with a passphrase:
+
+    $ agec -p <secret.txt >secret.txt.age
+    $ agec -d <secret.txt.age >secret.txt
+
+Generate a password-protected key file, asymmetrically encrypt and
+decrypt:
+
+    $ agec-keygen | agec -p >key
+    Public key: age19a79get8k27m20w6j3z7jw5xarn22u2lhf6rpwg2hqpg83vk
+    msus3k4m7f
+    Enter passphrase:
+    $ agec \
+      -r age19a79get8k27m20w6j3z7jw5xarn22u2lhf6rpwg2hqpg83vkmsus3k4m7f \
+      <secret.txt >secret.txt.age
+    $ agec -d -ikey secret.txt.age >secret.txt
+
+Print the encrypted secret on paper, wrapping it in ASCII armor:
+
+    $ agec -ap <secret.txt | lpr
+
+For more info see manual pages in doc/ directory.
+
+Compatibility
+-------------
+
+agec aims to be compliant with v1 specification[3] (also available
+at doc/age.5). The tool passes all test vectors[4] except for some
+in test/vectors/dec-wontfix directory.
+
+The tool diverges from these cases in the following ways:
+
+1. agec is strict about decoding ASCII armored input: it accepts
+   only LF as a line ending, disallows whitespace before and after
+   the PEM block and enforces LF at the end of the last line.
+
+2. agec does not validate base64 encoding of unrecognized stanzas.
+
+These cases seems not to be directly required by the specification.
+
+To do a test, run 'make check-vectors'. It doesn't include
+dec-wontfix vectors.
+
+The keyfile format is compatible with the reference implementation[5].
+The invocation format is somewhat similar but is not compatible.
+
+[3]: https://age-encryption.org/v1
+[4]: https://age-encryption.org/testkit
+[5]: https://github.com/FiloSottile/age
+
+License
+-------
+
+agec is licensed under 0BSD (see LICENSE) or may be treated as
+public domain, whichever suits you best.
