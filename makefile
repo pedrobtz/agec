@@ -13,7 +13,10 @@ OBJ_TEST = base64.o bech32.o util.o
 TESTTMP = test/unit/main test/unit/main.o test/unit/*.c \
 	test/vectors/body test/vectors/out test/vectors/priv
 PREFIX = /usr/local
-BINDIR = $(PREFIX)bin
+BINDIR = $(PREFIX)/bin
+MANDIR = $(PREFIX)/share/man
+MAN1DIR = $(MANDIR)/man1
+MAN5DIR = $(MANDIR)/man5
 .SUFFIXES: .c .o .ts _test.c
 
 all: agec agec-keygen
@@ -29,8 +32,13 @@ agec-keygen: $(OBJ_KEYGEN)
 
 install: agec agec-keygen
 	mkdir -p $(DESTDIR)$(BINDIR)
-	cp -f agec agec-keygen $(DESTDIR)$(BINDIR)
-	chmod 755 $(DESTDIR)$(BINDIR)/agec $(DESTDIR)$(BINDIR)agec-keygen
+	cp agec agec-keygen $(DESTDIR)$(BINDIR)
+	chmod 755 $(DESTDIR)$(BINDIR)/agec $(DESTDIR)$(BINDIR)/agec-keygen
+	mkdir -p $(DESTDIR)$(MAN1DIR) $(DESTDIR)$(MAN5DIR)
+	cp -a doc/agec.1 doc/agec-keygen.1 $(DESTDIR)$(MAN1DIR)
+	chmod 644 $(DESTDIR)$(MAN1DIR)/agec.1 $(DESTDIR)$(MAN1DIR)/agec-keygen.1
+	cp -a doc/age.5 $(DESTDIR)$(MAN5DIR)
+	chmod 644 $(DESTDIR)$(MAN5DIR)/age.5
 
 check-usage: agec
 	cd test && ./usage.sh

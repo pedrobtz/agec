@@ -1,0 +1,36 @@
+.Dd July 13, 2024
+.Dt AGEC-KEYGEN 1
+.Os
+.Sh NAME
+.Nm agec-keygen
+.Nd generate X25519 keys for
+.Xr agec 1
+.Sh SYNOPSIS
+.Nm
+.Op Fl y
+.Sh DESCRIPTION
+.Nm
+generates X25519 keys for
+.Xr agec 1 .
+If no options are provided,
+.Nm
+prints a new key pair to the standard output.
+Public key is written as a comment, starting with
+.Ql # .
+If the output is not a terminal, then the public key is also
+written to the standard error stream.
+.Pp
+If the
+.Fl y
+flag is given,
+.Nm
+will read private keys from the standard input and write corresponding
+public keys to the standard output.
+Empty lines and lines beginning with
+.Ql #
+are ignored.
+.Sh EXIT STATUS
+Exit status is 0 on success, and >0 if an error occurs.
+.Sh SEE ALSO
+.Xr agec 1 ,
+.Xr age 5

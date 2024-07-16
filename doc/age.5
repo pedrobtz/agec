@@ -1,0 +1,477 @@
+.Dd July 06, 2024
+.Dt AGE 5
+.Os
+.Sh NAME
+.Nm age
+.Nd file encryption format with multiple pluggable recipients
+.Sh DESCRIPTION
+.Ss Conventions used in this document
+ABNF syntax follows RFC 5234 and RFC 7405 and references the core rules
+in RFC 5234, Appendix\~B.1.
+.Pp
+The base64 encoding used throughout is the standard Base 64 encoding
+specified in RFC 4648, Section\~4, without
+.Ql =
+padding characters (sometimes referred to as
+.Dq raw
+or
+.Dq unpadded
+base64).
+Encoders MUST generate canonical base64 according to RFC 4648,
+Section\~3.5, and decoders MUST reject non-canonical encodings and
+encodings ending with
+.Ql =
+padding characters.
+.Pp
+Keys derived with HKDF-SHA-256 are produced by applying HKDF-Extract
+with the specified salt followed by HKDF-Expand with the specified
+info according to RFC 5869.
+The hash used with HKDF in this specification is always SHA-256.
+The length of the output keying material is always 32 bytes.
+.Pp
+ChaCha20-Poly1305 is the AEAD encryption function from RFC 7539.
+.Pp
+.Ql ||
+denotes concatenation.
+.Ql 0x
+followed by two hexadecimal characters denotes a byte value in the
+0-255 range.
+.Pp
+The key words
+.Dq MUST ,
+.Dq MUST NOT ,
+.Dq REQUIRED ,
+.Dq SHALL ,
+.Dq SHALL NOT ,
+.Dq SHOULD ,
+.Dq SHOULD NOT ,
+.Dq RECOMMENDED ,
+.Dq NOT RECOMMENDED ,
+.Dq MAY
+and
+.Dq OPTIONAL
+in this document are to be interpreted as described in BCP 14, RFC 2119,
+RFC 8174 when, and only when, they appear in all capitals, as shown
+here.
+.Ss Encrypted file format
+.Pp
+An
+.Nm
+file is composed of two parts: a textual
+.Sx Header
+that carries the
+.Em file key ,
+and a binary
+.Sx Payload
+encrypted with it.
+Overall,
+.Nm
+files MUST be treated as binary, and are not malleable without
+knowledge of the file key.
+.Pp
+.Nm
+files MAY use the extension
+.Ql .age ,
+in both their binary and armored
+.Sx ASCII armor
+formats.
+.Ss File key
+Each file is encrypted with a 128-bit symmetric
+.Em file key .
+The
+.Em file key
+MUST be generated as 16 bytes of CSPRNG output.
+It MUST NOT be reused across multiple files.
+.Ss Header
+The textual file header wraps the
+.Em file key
+for one or more
+.Em recipients ,
+so that it can be unwrapped by one of the corresponding
+.Em identities .
+It starts with a version line, followed by one or more recipient
+stanzas, and ends with a MAC.
+.Bd -literal -offset indent
+age-encryption.org/v1
+-> X25519 XEl0dJ6y3C7KZkgmgWUicg63EyXJiwBJW8PdYJ/cYBE
+qRS0AMjdjPvZ/WT08U2KL4G+PIooA3hy38SvLpvaC1E
+--- HK2NmOBN9Dpq0Gw6xMCuhFcQlQLvZ/wQUi/2scLG75s
+.Ed
+.Pp
+Note that each section of the header can be parsed by looking at its
+first three characters, and it ends either at the next newline (for
+version and MAC lines) or at the first line shorter than 64 columns (for
+stanzas).
+.Ss Version line
+The version line always starts with
+.Ql age-encryption.org/ ,
+is followed by an arbitrary version string, and ends with a line feed
+.Po
+.Ql 0x0A
+.Pc .
+.Bd -literal -offset indent
+version-line = %s"age-encryption.org/" version LF
+
+version = 1*VCHAR
+.Ed
+.Pp
+This document only specifies the
+.Ql v1
+format.
+Anything after the end of the version line may change in future
+versions.
+.Ss Recipient stanza
+A recipient stanza starts with
+.Ql -> ,
+followed after a space by one or more space-separated arguments, and a
+base64-encoded body wrapped at 64 columns.
+The body MUST end with a line shorter than 64 characters, which MAY
+be empty.
+.Pp
+Each recipient stanza wraps the same
+.Em file key
+independently.
+Identity implementations are provided the full set of stanzas and
+recognize those addressed to them from their arguments.
+Identity implementations MUST ignore unrecognized stanzas, unless they
+wish to require that the recipient type they implement is not mixed
+with other types.
+.Pp
+It is RECOMMENDED that non-native recipient implementations use
+fully-qualified names as the first stanza argument, such as
+.Ql example.com/enigma ,
+to avoid ambiguity and conflicts.
+.Pp
+Recipient implementations MAY choose to include an identifier of the
+specific recipient (for example, a short hash of the public key) as an
+argument.
+Note that this sacrifices any chance of ciphertext anonymity and
+unlinkability.
+.Ss Header Mac
+The final header line starts with
+.Ql ---
+and is followed after a space by the base64-encoded MAC of the header.
+The MAC is computed with HMAC-SHA-256 (see RFC 2104) over the whole
+header up to and including the
+.Ql ---
+mark (excluding the space following it).
+.Pp
+The HMAC key is computed as follows:
+.Bd -literal -offset indent
+HMAC key = HKDF-SHA-256(ikm = file key, salt = empty,
+    info = "header")
+.Ed
+.Ss ABNF definition of file header
+The following is the ABNF definition of the v1 file header.
+.Bd -literal -offset indent
+header = v1-line 1*stanza end
+
+v1-line = %s"age-encryption.org/v1" LF
+
+end = \(dq--- \(dq 43base64char LF
+
+base64char = ALPHA / DIGIT / "+" / "/"
+
+stanza = arg-line *full-line final-line
+
+arg-line = "-> " argument *(SP argument) LF
+
+argument = 1*VCHAR
+
+full-line = 64base64char LF
+
+final-line = *63base64char LF
+.Ed
+.Ss Payload
+The binary payload encrypts the file body and starts immediately after
+the header.
+It begins with a 16-byte nonce generated by the sender from a CSPRNG.
+A new nonce MUST be generated for each file.
+.Pp
+The payload key is computed as follows:
+.Bd -literal -offset indent
+payload key = HKDF-SHA-256(ikm = file key, salt = nonce,
+    info = "payload")
+.Ed
+.Pp
+The payload is split in chunks of 64 KiB, and each of them is encrypted
+with ChaCha20-Poly1305, using the payload key and a 12-byte nonce
+composed as follows: the first 11 bytes are a big endian chunk counter
+starting at zero and incrementing by one for each subsequent chunk;
+the last byte is 0x01 for the final chunk and 0x00 for all preceding
+ones.
+The final chunk MAY be shorter than 64 KiB but MUST NOT be empty
+unless the whole payload is empty.
+.Pp
+This is a STREAM variant from
+.Lk https://eprint.iacr.org/2015/189 "Online Authenticated-Encryption and its Nonce-Reuse Misuse-Resistance" .
+It is similar to those used by
+.Lk https://github.com/google/tink/blob/59bb34495d1cb8f9d9dbc0f0a52c4f9e21491a14/docs/WIRE-FORMAT.md#streaming-encryption "Tink"
+and
+.Lk https://github.com/miscreant/meta/wiki/STREAM Miscreant ,
+but it doesn't prefix the AEAD nonce with key material as the payload
+key is 256 bits (enough even to provide a security margin in the
+multi-target setting) and derived from both file key and nonce.
+.Pp
+The payload can be streamed by decrypting or encrypting one chunk at a
+time.
+Streaming decryption MUST signal an error if the end of file is
+reached without successfully decrypting a final chunk.
+.Pp
+The payload can be seeked by jumping ahead in chunk increments, and
+decrypting the whole chunk that contains the seeked position.
+Seeking relatively to the end of file MUST first decrypt and verify
+that the last chunk is a valid final chunk.
+.Pp
+The payload MUST NOT be modified without re-encrypting it as a new file
+with a fresh nonce.
+.Ss Native recipient types
+This document specifies two core
+.Nm
+recipient types: an asymmetric encryption type based on X25519,
+and a passphrase encryption type based on scrypt.
+.Ss The X25519 recipient type
+An X25519 identity is generated as
+.Bd -literal -offset indent
+identity = read(CSPRNG, 32)
+.Ed
+.Pp
+and encoded as
+.Lk https://github.com/bitcoin/bips/blob/master/bip-0173.mediawiki Bech32
+with HRP
+.Ql AGE-SECRET-KEY-
+.Bd -literal -offset
+AGE-SECRET-KEY-1GFPYYSJZGFPYYSJZGFPYYSJZGFPYYSJZGFPYYSJZGFPYYSJZGFPQ4EGAEX
+.Ed
+.Pp
+The corresponding recipient is computed as
+.Bd -literal -offset indent
+recipient = X25519(identity, basepoint)
+.Ed
+.Pp
+where
+.Ql X25519
+is from RFC 7748, Section 5 and
+.Ql basepoint
+is the Curve25519 base point from RFC 7748, Section 4.1.
+.Pp
+The recipient is encoded as Bech32 with HRP
+.Ql age .
+.Bd -literal -offset indent
+age1zvkyg2lqzraa2lnjvqej32nkuu0ues2s82hzrye869xeexvn73equnujwj
+.Ed
+.Pp
+Note that Bech32 strings can only be all uppercase or all lowercase, but
+the checksum is always computed over the lowercase string.
+.Ss X25519 recipient stanza
+An X25519 recipient stanza has two arguments.
+.Bd -literal -offset indent
+-> X25519 O6DLx/wDIawpUC978NSPjYvrfDtJVnZApXKp4FMPHCY
+3aKjozt9agh7jGmvOKvR4iax41Wl4zj95MKK4X9JuWc
+.Ed
+.Pp
+The first is the fixed string
+.Ql X25519
+and the second is the base64-encoded ephemeral share computed by the
+recipient implementation as follows:
+.Bd -literal -offset indent
+ephemeral secret = read(CSPRNG, 32)
+ephemeral share = X25519(ephemeral secret, basepoint)
+.Ed
+.Pp
+A new ephemeral secret MUST be generated for each stanza and each file.
+.Pp
+The body of the recipient stanza is computed by the recipient
+implementation as
+.Bd -literal -offset indent
+salt = ephemeral share || recipient
+info = "age-encryption.org/v1/X25519"
+shared secret = X25519(ephemeral secret, recipient)
+wrap key = HKDF-SHA-256(ikm = shared secret, salt, info)
+body = ChaCha20-Poly1305(key = wrap key, plaintext = file key)
+.Ed
+.Pp
+where the ChaCha20-Poly1305 nonce is fixed as 12 0x00 bytes.
+.Pp
+The identity implementation MUST ignore any stanza that does not have
+.Ql X25519
+as the first argument, and MUST otherwise reject any stanza that has
+more or less than two arguments, or where the second argument is not a
+canonical encoding of a 32-byte value.
+It MUST check that the body length is exactly 32 bytes before
+attempting to decrypt it.
+.Pp
+The identity implementation computes the shared secret as follows:
+.Bd -literal -offset indent
+shared secret = X25519(identity, ephemeral share)
+.Ed
+.Pp
+If the shared secret is all 0x00 bytes, the identity implementation
+MUST abort.
+.Pp
+Finally, it derives the key as above and decrypts the file key in the
+body.
+.Ss The scrypt recipient type
+The scrypt recipient and identity implementations encrypt and decrypt
+the file key with a provided passphrase.
+.Ss scrypt recipient stanza
+An scrypt recipient stanza has three arguments.
+.Bd -literal -offset indent
+-> scrypt ajMFur+EJLGaohv/dLRGnw 18
+8SHBz/ldWnjyGFQqfjat6uNBarWqqEMDS7W8X7+Xq5Q
+.Ed
+.Pp
+The first is the string
+.Ql scrypt ,
+the second is a base64-encoded salt computed by the recipient
+implementation as 16 bytes from a CSPRNG, and the third is the base-two
+logarithm of the scrypt work factor in decimal.
+.Pp
+A new salt MUST be generated for each stanza and each file.
+.Pp
+The body is computed as
+.Bd -literal -offset indent
+wrap key = scrypt(N = work factor, r = 8, p = 1, dkLen = 32,
+    S = "age-encryption.org/v1/scrypt" || salt, P = passphrase)
+body = ChaCha20-Poly1305(key = wrap key, plaintext = file key)
+.Ed
+.Pp
+where the ChaCha20-Poly1305 nonce is fixed as 12 0x00 bytes and scrypt
+is from RFC 7914.
+.Pp
+The identity implementation MUST reject any scrypt stanza that has more
+or less than three arguments, where the second argument is not a
+canonical encoding of a 16-byte value, or where the third argument is
+not a decimal number composed of only digits with no leading zeroes
+.Po
+.Ql %x31-39 *DIGIT
+in ABNF or
+.Ql ^[1-9][0-9]*$
+in regular expression
+.Pc .
+The identity implementation SHOULD apply an
+upper limit to the work factor, and it MUST check that the body length
+is exactly 32 bytes before attempting to decrypt it.
+.Pp
+An scrypt stanza, if present, MUST be the only stanza in the header.
+In other words, scrypt stanzas MAY NOT be mixed with other scrypt
+stanzas or stanzas of other types.
+This is to uphold an expectation of authentication that is implicit
+in password-based encryption.
+The identity implementation MUST reject headers where an scrypt
+stanza is present alongside any other stanza.
+.Ss ASCII armor
+.Nm
+files that need to be transmitted as 7-bit ASCII SHOULD be encoded
+according to the strict PEM encoding specified in RFC 7468, Section\~3
+(Figure\~3), with case-sensitive label
+.Ql AGE ENCRYPTED FILE .
+Note that this encoding employs base64 with
+.Ql =
+padding characters, unlike the rest of this document.
+.Pp
+Note that ASCII armored files are malleable unless care is taken to
+reject any data before and after the PEM encoding, a strict PEM parser
+is used, and canonical base64 is enforced.
+.Nm
+implementations SHOULD reject non-canonical ASCII armor encodings
+except for whitespace before and after the PEM block, and MAY choose
+to accept both LF and CRLF line endings.
+.Ss Test vectors
+A comprehensive set of test vectors is avaliable at
+.Lk https://age-encryption.org/testkit .
+.Sh AUTHORS
+.An -nosplit
+The specification under
+.Sx DESCRIPTION
+section was designed and written by
+.An Filippo Valsorda Pq @FiloSottile
+and
+.An Ben Cartwright-Cox Pq @Benjojo12
+and is available online at
+.Lk https://age-encryption.org/v1 .
+.Sh STANDARDS
+.Rs
+.%A S. Bradner
+.%D March 1997
+.%R RFC 2119
+.%T Key words for use in RFCs to Indicate Requirement Levels
+.Re
+.Pp
+.Rs
+.%A S. Josefsson
+.%D October 2006
+.%R RFC 4648
+.%T The Base16, Base32, and Base64 Data Encodings
+.Re
+.Pp
+.Rs
+.%A D. Crocker, Ed.
+.%A P. Overell
+.%D January 2008
+.%R RFC 5234
+.%T Augmented BNF for Syntax Specifications: ABNF
+.Re
+.Pp
+.Rs
+.%A H. Krawczyk
+.%A P. Eronen
+.%D May 2010
+.%R RFC 5869
+.%T HMAC-based Extract-and-Expand Key Derivation Function (HKDF)
+.Re
+.Pp
+.Rs
+.%A P. Kyzivat
+.%D December 2014
+.%R RFC 7405
+.%T Case-Sensitive String Support in ABNF
+.Re
+.Pp
+.Rs
+.%A S. Josefsson
+.%A S. Leonard
+.%D April 2015
+.%R RFC 7468
+.%T Case-Sensitive String Support in ABNF
+.Re
+.Pp
+.Rs
+.%A Y. Nir
+.%A A. Langley
+.%D May 2015
+.%R RFC 7539
+.%T ChaCha20 and Poly1305 for IETF Protocols
+.Re
+.Pp
+.Rs
+.%A A. Langley
+.%A M. Hamburg
+.%A S. Turner
+.%D January 2016
+.%R RFC 7748
+.%T Elliptic Curves for Security
+.Re
+.Pp
+.Rs
+.%A C. Percival
+.%A S. Josefsson
+.%D August 2016
+.%R RFC 7914
+.%T The scrypt Password-Based Key Derivation Function
+.Re
+.Pp
+.Rs
+.%A B. Leiba
+.%D May 2017
+.%R RFC 8174
+.%T Ambiguity of Uppercase vs Lowercase in RFC 2119 Key Words
+.Re
+.Pp
+.Rs
+.%A P. Wuille
+.%A G. Maxwell
+.%D March 2017
+.%R BIP 0173
+.%T Base32 address format for native v0-16 witness outputs
+.Re

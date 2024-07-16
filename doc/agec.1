@@ -1,0 +1,138 @@
+.Dd July 13, 2024
+.Dt AGEC 1
+.Os
+.Sh NAME
+.Nm agec
+.Nd simple file encryption and decryption tool
+.Sh SYNOPSIS
+.Nm
+.Fl ( r
+.Ar recipient ) Ns ...
+.Op Fl a
+.Op Ar file
+.Nm
+.Fl p
+.Op Fl a
+.Op Ar file
+.Nm
+.Fl d
+.Op Fl i Ar keyfile
+.Op Ar file
+.Sh DESCRIPTION
+.Nm
+encrypts or decrypts
+.Ar file
+using
+.Xr age 5
+format.
+If no
+.Ar file
+is provided, the tool operates with data read from the standard input.
+The tool implements asymmetric encryption based on X25519,
+and a passphrase encryption based on scrypt.
+.Pp
+The first form of the command is used for asymmetric encryption.
+Input can be encrypted for multiple recipients by repeating
+.Fl r Ar recipient .
+Every recipient who possesses the corresponding private key will
+be able to decrypt the encrypted data.
+Public and private key pairs can be created with
+.Xr agec-keygen 1 .
+.Pp
+The second form is used for symmetric encryption using a passphrase. 
+The passphrase is requested interactively.
+.Pp
+The third form is used for decryption, both asymmetric and symmetric.
+The passphrase is requested interactively in two cases:
+(1) when the input is password-encrypted and
+(2) when the
+.Ar keyfile
+is encrypted itself.
+.Pp
+The options are as follows:
+.Bl -tag -width Ds
+.It Fl a
+Wrap the encrypted output in ASCII armor as specified in
+.Xr age 5 ,
+for ease of use.
+The option cannot be specified when decrypting since
+the ASCII armoring is detected and decoded transparently in this
+case.
+.It Fl d
+Decrypt the
+.Ar file
+or the standard input.
+Decrypted data is written to the standard output.
+ASCII armoring is transparently detected and decoded.
+.It Fl i Ar keyfile
+Specify private keys for decryption.
+The
+.Ar keyfile
+consists of zero or more lines, each one represents a
+private key.
+Empty lines and lines beginning with
+.Ql #
+are ignored.
+The same format is used by
+.Xr age-keygen 1 .
+The
+.Ar keyfile
+may be encrypted with a passphrase and optionally
+wrapped in ASCII armor in this case.
+.It Fl p
+Encrypt the
+.Ar file
+or the standard input with a passphrase.
+The passphrase is obtained interactively from the terminal.
+.It Fl r Ar recipient
+Encrypt the
+.Ar file
+or the standard input for the specified public key.
+The option may be repeated.
+Every specified
+.Ar recipient
+who possesses the corresponding private key will be able to decrypt
+the encrypted data.
+.El
+.Sh IMPLEMENTATION NOTES
+.Nm
+is strict about decoding ASCII armored input:
+it accepts only LF as a line ending, disallows whitespace before
+and after the PEM block and enforces LF at the end of the last line.
+.Pp
+.Nm
+does not validate base64 encoding of unrecognized stanzas.
+.Pp
+The
+.Ar keyfile
+format is compatible with the
+.Lk https://github.com/FiloSottile/age reference implementation 
+of
+.Xr age 5 .
+The invocation format is somewhat similar but is not compatible.
+.Sh EXIT STATUS
+.Ex -std
+.Sh EXAMPLES
+Encrypt and decrypt the secret with a passphrase:
+.Pp
+.Dl $ agec -p <secret.txt >secret.txt.age
+.Dl $ agec -d <secret.txt.age >secret.txt
+.Pp
+Generate a password-protected key file, asymmetrically encrypt and decrypt:
+.Bd -literal -offset indent
+$ agec-keygen | agec -p >key
+Public key: age19a79get8k27m20w6j3z7jw5xarn22u2lhf6rpwg2hqpg83vk
+msus3k4m7f
+Enter passphrase:
+$ agec \\
+   -r age19a79get8k27m20w6j3z7jw5xarn22u2lhf6rpwg2hqpg83vkmsus3k4m7f \\
+   <secret.txt >secret.txt.age
+$ agec -d -ikey secret.txt.age >secret.txt
+.Ed
+.Pp
+Print the encrypted secret on paper, wrapping it in ASCII armor:
+.Pp
+.Dl $ agec -ap <secret.txt | lpr
+.Sh SEE ALSO
+.Xr agec-keygen 1 ,
+.Xr age 5
