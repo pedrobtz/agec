@@ -34,7 +34,7 @@ hdrappend(Header *h, char *fmt, ...)
 		h->allocated = h->len + ret + 1;
 		h->data = realloc(h->data, h->allocated);
 		if(h->data == NULL)
-			return esys("");
+			return eget();
 	}
 	memcpy(h->data + h->len, buf, ret);
 	h->len += ret;
