@@ -2,11 +2,6 @@
 #define IOABUFRAWSIZE 48*256
 #define IOABUFSIZE B64EBUFLEN(IOABUFRAWSIZE) + B64EBUFLEN(IOABUFRAWSIZE) / 64
 #define IOABUFREADSIZE 65*126
-enum {
-	EBADARMOR   = -1,
-	EDECRYPT    = -2,
-	EEMPTYCHUNK = -3
-};
 
 typedef struct Obuf Obuf;
 struct Obuf {
