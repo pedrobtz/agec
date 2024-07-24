@@ -23,9 +23,9 @@ die(const char *msg)
 }
 
 void
-exitusage(void)
+exitstatus(char *st)
 {
-	exit(1);
+	exit(st != NULL);
 }
 
 int

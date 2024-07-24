@@ -69,7 +69,7 @@ usage(void)
 			"\t%s -p [-a] [file]\n"
 			"\t%s -d [-i keyfile] [file]\n",
 			argv0, argv0, argv0);
-	exitusage();
+	exitstatus("usage");
 }
 
 static const char *
@@ -732,7 +732,7 @@ out:
 	ibfree(&ib);
 	if(e)
 		die(e);
-	return 0;
+	exitstatus(NULL);
 badusage:
 	wipe(&ob, sizeof(ob));
 	keyfree(&recs);

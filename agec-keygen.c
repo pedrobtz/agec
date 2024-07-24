@@ -117,7 +117,7 @@ static void
 usage(void)
 {
 	fprintf(stderr, "usage: %s [-y]\n", argv0);
-	exitusage();
+	exitstatus("usage");
 }
 
 static void
@@ -388,5 +388,5 @@ main(int argc, char *argv[])
 	} else {
 		usage();
 	}
-	return 0;
+	exitstatus(NULL);
 }

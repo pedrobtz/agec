@@ -18,10 +18,10 @@ xisatty(int fd)
 	return strcmp(buf, "/dev/cons") == 0;
 }
 
-void
-exitusage(void)
+_Noreturn void
+exitstatus(char *s)
 {
-	exits("usage");
+	exits(s);
 }
 
 void
