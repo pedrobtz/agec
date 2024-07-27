@@ -55,7 +55,7 @@ bech32decode(char *s, uchar *out, usize *outlen, usize *hrplen)
 	if(!ok)
 		return 0;
 	code = checksum(s, slen, code, &ok);
-	if(!ok || code != 1)
+	if(code != 1)
 		return 0;    /* recovery not implemented */
 	*hrplen = last1;
 	return 1;
