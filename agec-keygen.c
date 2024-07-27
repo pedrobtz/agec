@@ -389,4 +389,5 @@ main(int argc, char *argv[])
 		usage();
 	}
 	exitstatus(NULL);
+	return 1; /* not reached */
 }

@@ -18,7 +18,7 @@ xisatty(int fd)
 	return strcmp(buf, "/dev/cons") == 0;
 }
 
-_Noreturn void
+void
 exitstatus(char *s)
 {
 	exits(s);
