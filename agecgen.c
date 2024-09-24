@@ -378,7 +378,7 @@ main(int argc, char *argv[])
 {
 	Keypair kp;
 
-	argv0 = xprogname(argv[0], "agec-keygen");
+	argv0 = xprogname(argv[0], "agecgen");
 	if(argc == 1) {
 		kp = genkey();
 		printkp(kp);

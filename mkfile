@@ -3,7 +3,7 @@
 os = plan9
 TARG=\
 	agec\
-	agec-keygen
+	agecgen
 
 BIN = /$objtype/bin/auth
 

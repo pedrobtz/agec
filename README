@@ -33,7 +33,7 @@ Encrypt and decrypt the secret with a passphrase:
 Generate a password-protected key file, asymmetrically encrypt and
 decrypt:
 
-    $ agec-keygen | agec -p >key
+    $ agecgen | agec -p >key
     Public key: age19a79get8k27m20w6j3z7jw5xarn22u2lhf6rpwg2hqpg83vk
     msus3k4m7f
     Enter passphrase:

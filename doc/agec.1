@@ -37,7 +37,7 @@ Input can be encrypted for multiple recipients by repeating
 Every recipient who possesses the corresponding private key will
 be able to decrypt the encrypted data.
 Public and private key pairs can be created with
-.Xr agec-keygen 1 .
+.Xr agecgen 1 .
 .Pp
 The second form is used for symmetric encryption using a passphrase. 
 The passphrase is requested interactively.
@@ -74,7 +74,7 @@ Empty lines and lines beginning with
 .Ql #
 are ignored.
 The same format is used by
-.Xr age-keygen 1 .
+.Xr agecgen 1 .
 The
 .Ar keyfile
 may be encrypted with a passphrase and optionally
@@ -120,7 +120,7 @@ Encrypt and decrypt the secret with a passphrase:
 .Pp
 Generate a password-protected key file, asymmetrically encrypt and decrypt:
 .Bd -literal -offset indent
-$ agec-keygen | agec -p >key
+$ agecgen | agec -p >key
 Public key: age19a79get8k27m20w6j3z7jw5xarn22u2lhf6rpwg2hqpg83vk
 msus3k4m7f
 Enter passphrase:
@@ -134,5 +134,5 @@ Print the encrypted secret on paper, wrapping it in ASCII armor:
 .Pp
 .Dl $ agec -ap <secret.txt | lpr
 .Sh SEE ALSO
-.Xr agec-keygen 1 ,
+.Xr agecgen 1 ,
 .Xr age 5
