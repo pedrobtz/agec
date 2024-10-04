@@ -355,7 +355,7 @@ filekeys(void)
 			e = esys("failed to read");
 			goto out;
 		}
-		if(nr == -2) {
+		if(nr == BADFORMAT) {
 			e = efmt("invalid private key at line %d", lineno);
 			goto out;
 		}
