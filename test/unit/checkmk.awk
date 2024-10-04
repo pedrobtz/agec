@@ -481,7 +481,6 @@ function print_boilerplate()
     print " * Edit the original source file " srcfile " instead.";
     print " */";
     print "";
-    print "#include <check.h>";
     print "";
     if (!clean_mode)
         print "#line 1 " string_encode(FILENAME)

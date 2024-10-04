@@ -1,2 +1,3 @@
-clean:VQ:
-	;
+</$objtype/mkfile
+TEST=unit
+</sys/src/cmd/mktest

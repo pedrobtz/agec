@@ -1,0 +1,30 @@
+</$objtype/mkfile
+
+TEST=dotest
+
+OFILES=\
+	base64.$O\
+	bech32.$O\
+	util.$O\
+	../../base64.$O\
+	../../bech32.$O\
+	../../util.$O\
+	../../plan9/util.$O
+
+6.dotest: $OFILES
+
+dotest.c: mkmain.sh
+	ape/psh -c 'mkmain.sh '$target' *.ts'
+
+%.c: %.ts
+	checkmk.awk $stem.ts > $target
+
+CFLAGS=-I../.. -I../../plan9
+
+CLEANFILES=\
+	dotest.c\
+	base64.c\
+	bech32.c\
+	util.c
+
+</sys/src/cmd/mktest

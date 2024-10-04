@@ -1,7 +1,7 @@
-#include <string.h>
-
 #include "common.h"
 #include "base64.h"
+
+#include <check.h>
 
 #suite base64
 

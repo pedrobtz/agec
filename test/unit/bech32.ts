@@ -1,7 +1,7 @@
-#include <string.h>
-
 #include "common.h"
 #include "bech32.h"
+
+#include <check.h>
 
 #suite bech32
 

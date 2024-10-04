@@ -1,6 +1,10 @@
-#!/bin/sh
+#!/bin/sh -x
 
-tool=../agec
+if [ $(uname) = Plan9 ]; then
+	tool=../6.agec
+else
+	tool=../agec
+fi
 rec=age19a79get8k27m20w6j3z7jw5xarn22u2lhf6rpwg2hqpg83vkmsus3k4m7f
 
 fail() {

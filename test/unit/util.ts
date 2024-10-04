@@ -1,7 +1,7 @@
-#include <string.h>
-
 #include "common.h"
 #include "util.h"
+
+#include <check.h>
 
 #suite util
 

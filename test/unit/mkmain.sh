@@ -9,6 +9,12 @@ out="$1"
 shift
 
 echo '#include <check.h>' >$out
+if [ $(uname) = Plan9 ]; then
+	echo '#include <u.h>' >> $out
+	echo '#include <libc.h>' >> $out
+else
+	echo '#define exits(x)' >> $out
+fi
 echo '' >>$out
 sed -n '/^#suite /s/^#suite *//p' $* \
 	| tr A-Z a-z \
@@ -36,6 +42,7 @@ cat <<. >>"$out"
 	nf = srunner_ntests_failed(sr);
 
 	srunner_free(sr);
+	exits(nil);
 	return nf == 0 ? 0 : 1;
 }
 .
