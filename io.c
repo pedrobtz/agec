@@ -30,7 +30,7 @@ bwrite(Obuf *b, void *buf, usize nbytes)
 		ret = bflush(b);
 		if(ret == -1)
 			return -1;
-		return write(b->fd, buf, nbytes);
+		return writeall(b->fd, buf, nbytes);
 	}
 	rest = IOBUFSIZE - b->cur;
 	c = (rest > nbytes) ? nbytes : rest;
@@ -39,7 +39,7 @@ bwrite(Obuf *b, void *buf, usize nbytes)
 		b->cur += nbytes;
 		return 0;
 	} else {
-		ret = write(b->fd, b->buf.buf, b->cur);
+		ret = writeall(b->fd, b->buf.buf, b->cur);
 		if(ret == -1)
 			return -1;
 		memcpy(b->buf.buf, (uchar *)buf + rest, nbytes - rest);
@@ -80,7 +80,7 @@ aflush(Obuf *b)
 	if(b->cur == 0)
 		return 0;
 	base64encode(b->buf.abuf, buf, b->cur, &outlen, 1);
-	r = write(b->fd, buf, outlen);
+	r = writeall(b->fd, buf, outlen);
 	b->cur = 0;
 	return r;
 }
@@ -94,7 +94,7 @@ bflush(Obuf *b)
 		return aflush(b);
 	if(b->cur == 0)
 		return 0;
-	r = write(b->fd, b->buf.buf, b->cur);
+	r = writeall(b->fd, b->buf.buf, b->cur);
 	b->cur = 0;
 	return r;
 }
@@ -409,4 +409,18 @@ recstop(Ibuf *b, usize *len)
 		*len = b->rec.len;
 		return b->rec.buf;
 	}
+}
+
+ssize
+writeall(int fd, const void *buf, usize nbytes)
+{
+	usize off;
+	ssize nw;
+
+	for(off = 0; off < nbytes; off += nw) {
+		nw = write(fd, (char *)buf + off, nbytes - off);
+		if(nw <= 0)
+			return -1;
+	}
+	return nbytes;
 }
