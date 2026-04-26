@@ -161,13 +161,16 @@ payload(uchar filekey[16], Ibuf *in, Obuf *out)
 {
 	uchar plkey[32], plnonce[16];
 	const char *e;
+	ssize nw;
 	int ok;
 
 	ok = randombuf(plnonce, 16);
 	if(!ok)
 		return "failed to generate payload nonce";
 	payloadkey(filekey, plnonce, plkey);
-	bwrite(out, plnonce, sizeof(plnonce));
+	nw = bwrite(out, plnonce, sizeof(plnonce));
+	if(nw == -1)
+		return eget();
 	e = plencrypt(in, out, plkey);
 	wipe(plkey, sizeof(plkey));
 	return e;
