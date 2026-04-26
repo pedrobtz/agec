@@ -88,8 +88,8 @@ bflush(Output *b)
 static ssize
 bwrite(Output *b, void *buf, usize nbytes)
 {
-        usize rest, c;
-        ssize ret;
+	usize rest, c;
+	ssize ret;
 
 	if(nbytes > sizeof(b->buf)) {
 		ret = bflush(b);
@@ -103,14 +103,14 @@ bwrite(Output *b, void *buf, usize nbytes)
 	if(rest > nbytes) {
 		b->cur += nbytes;
 		return 0;
-        } else {
+	} else {
 		ret = writeall(1, b->buf, b->cur);
 		if(ret == -1)
 			return -1;
 		memcpy(b->buf, (uchar *)buf + rest, nbytes - rest);
 		b->cur = nbytes - rest;
 		return ret;
-        }
+	}
 }
 
 static void

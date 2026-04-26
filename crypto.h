@@ -2,9 +2,9 @@
 
 typedef struct Sha256ctx Sha256ctx;
 struct Sha256ctx {
-        uint64 len;    /* processed message length */
-        uint32 h[8];   /* hash state */
-        uchar buf[64]; /* message block buffer */
+	uint64 len;    /* processed message length */
+	uint32 h[8];   /* hash state */
+	uchar buf[64]; /* message block buffer */
 };
 
 typedef struct Hmacsha256ctx Hmacsha256ctx;
