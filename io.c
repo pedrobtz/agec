@@ -176,7 +176,7 @@ bread(Ibuf *b, void *buf, usize nbytes)
 		if(b->isarmor == -1)
 			return -1;
 	}
-	if(b->eof)
+	if(b->eof && b->cur == b->size)
 		return 0;
 	while(nbytes > 0) {
 		if(b->cur == b->size) {
@@ -333,7 +333,7 @@ bpeek(Ibuf *b, char *c)
 		if(b->isarmor == -1)
 			return -1;
 	}
-	if(b->eof)
+	if(b->eof && b->cur == b->size)
 		return 0;
 	if(b->cur < b->size) {
 		*c = b->buf[b->cur];
