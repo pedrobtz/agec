@@ -360,6 +360,7 @@ static void
 recappend(Ibuf *b, void *buf, usize len)
 {
 	usize cap, ncap;
+	uchar *nbuf;
 
 	if(b->recfail)
 		return;
@@ -381,11 +382,12 @@ recappend(Ibuf *b, void *buf, usize len)
 			}
 			cap = ncap;
 		}
-		b->rec.buf = realloc(b->rec.buf, ncap);
-		if(b->rec.buf == NULL) {
+		nbuf = realloc(b->rec.buf, ncap);
+		if(nbuf == NULL) {
 			b->recfail = eget();
 			return;
 		}
+		b->rec.buf = nbuf;
 		b->rec.capacity = ncap;
 	}
 	memcpy(b->rec.buf + b->rec.len, buf, len);
