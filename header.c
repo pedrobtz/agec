@@ -24,21 +24,25 @@ hdrappend(Header *h, char *fmt, ...)
 {
 	va_list l;
 	char buf[256];
+	uchar *ndata;
+	usize nalloc;
 	int ret;
 	
 	va_start(l, fmt);
 	ret = vsnprintf(buf, sizeof(buf), fmt, l);
+	va_end(l);
 	if(ret < 0 || (usize)ret >= sizeof(buf))
 		return "buffer overflow";
 	if(h->len + ret >= h->allocated) {
-		h->allocated = h->len + ret + 1;
-		h->data = realloc(h->data, h->allocated);
-		if(h->data == NULL)
+		nalloc = h->len + ret + 1;
+		ndata = realloc(h->data, nalloc);
+		if(ndata == NULL)
 			return eget();
+		h->data = ndata;
+		h->allocated = nalloc;
 	}
 	memcpy(h->data + h->len, buf, ret);
 	h->len += ret;
-	va_end(l);
 	return NULL;
 }
 
