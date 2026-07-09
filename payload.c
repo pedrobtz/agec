@@ -5,7 +5,7 @@
 #include "io.h"
 #include "payload.h"
 
-static int eof(Ibuf *b);
+static int ateof(Ibuf *b);
 static const char *incnonce(uchar nonce[12]);
 static usize encchunk(Data in, uchar key[32], uchar nonce[12], uchar *out);
 static usize decchunk(Data in, uchar key[32], uchar nonce[12], uchar *out);
@@ -39,7 +39,7 @@ plencrypt(Ibuf *in, Obuf *out, uchar plkey[32])
 		nr = bread(in, inbuf, CHUNKLEN);
 		if(nr == -1)
 			return eget();
-		last = eof(in);
+		last = ateof(in);
 		if(last == -1)
 			return eget();
 		ichunk.len = nr;
@@ -54,7 +54,7 @@ plencrypt(Ibuf *in, Obuf *out, uchar plkey[32])
 }
 
 static int
-eof(Ibuf *b)
+ateof(Ibuf *b)
 {
 	ssize nr;
 	char c;
@@ -114,7 +114,7 @@ pldecrypt(Ibuf *in, Obuf *out, uchar plkey[32])
 		nr = bread(in, inbuf, sizeof(inbuf));
 		if(nr == -1)
 			return eget();
-		last = eof(in);
+		last = ateof(in);
 		if(last == -1)
 			return eget();
 		if(last && i > 0 && nr == TAGLEN)
@@ -181,7 +181,7 @@ plread(Ebuf *b, void *buf, usize nbytes)
 			b->cur = b->size = 0;
 		}
 		if(b->size == 0) {
-			last = eof(b->in);
+			last = ateof(b->in);
 			if(last == -1)
 				return -1;
 			if(last)
@@ -235,7 +235,7 @@ plpeek(Ebuf *b, char *c)
 		return -1;
 	if(nr == 0)
 		return 0;
-	last = eof(b->in);
+	last = ateof(b->in);
 	if(last == -1)
 		return -1;
 	if(last)
