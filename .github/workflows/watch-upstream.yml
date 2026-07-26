@@ -1,0 +1,72 @@
+name: Watch upstream agec
+
+# Notifies (via a GitHub issue) when SourceHut ~min/agec has advanced beyond the
+# latest vendored snapshot. Read-only: it never pushes or mirrors -- mirroring is
+# the manual fast-forward step documented in agecrypt's .agents/vendor-agec.md.
+#
+# NOTE: `schedule` (and a discoverable `workflow_dispatch`) only run from the
+# repository's DEFAULT branch. `master` is kept a pristine replica of upstream
+# (no local commits), so this file lives on `main`, which must be the default.
+
+on:
+  schedule:
+    - cron: "17 6 * * 1" # Mondays 06:17 UTC
+  workflow_dispatch:
+
+permissions:
+  contents: read
+  issues: write
+
+concurrency:
+  group: watch-upstream
+  cancel-in-progress: true
+
+jobs:
+  watch:
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+        with:
+          fetch-depth: 0 # tags + history needed for the comparison
+
+      - name: Fetch upstream (SourceHut)
+        run: |
+          git remote add upstream https://git.sr.ht/~min/agec 2>/dev/null || true
+          git fetch --tags --quiet upstream
+
+      - name: Count commits since the latest vendored snapshot
+        id: cmp
+        run: |
+          last=$(git tag -l 'vendor-*' | sort | tail -1)
+          if [ -z "$last" ]; then echo "::error::no vendor-* tag found"; exit 1; fi
+          n=$(git rev-list --count "refs/tags/$last..upstream/master")
+          echo "last=$last" >> "$GITHUB_OUTPUT"
+          echo "n=$n"       >> "$GITHUB_OUTPUT"
+          echo "short=$(git rev-parse --short upstream/master)" >> "$GITHUB_OUTPUT"
+          {
+            echo "log<<__AGEC_EOF__"
+            git log --oneline --no-decorate "refs/tags/$last..upstream/master"
+            echo "__AGEC_EOF__"
+          } >> "$GITHUB_OUTPUT"
+
+      - name: Open or refresh the tracking issue
+        if: steps.cmp.outputs.n != '0'
+        env:
+          GH_TOKEN: ${{ github.token }}
+          N: ${{ steps.cmp.outputs.n }}
+          LAST: ${{ steps.cmp.outputs.last }}
+          SHORT: ${{ steps.cmp.outputs.short }}
+          LOG: ${{ steps.cmp.outputs.log }}
+        run: |
+          title="Upstream agec is ${N} commit(s) ahead of ${LAST}"
+          {
+            printf 'Upstream `~min/agec@master` is at `%s`, **%s** commit(s) beyond the last vendored snapshot `%s`.\n\n' "$SHORT" "$N" "$LAST"
+            printf '```\n%s\n```\n\n' "$LOG"
+            printf 'Consider re-vendoring — see agecrypt `.agents/vendor-agec.md`.\n'
+          } > body.md
+          num=$(gh issue list --state open --search 'in:title "Upstream agec is"' --json number -q '.[0].number // empty')
+          if [ -n "$num" ]; then
+            gh issue edit "$num" --title "$title" --body-file body.md
+          else
+            gh issue create --title "$title" --body-file body.md
+          fi
