@@ -687,8 +687,8 @@ main(int argc, char *argv[])
 	if(argc == 1) {
 		fd = open(argv[0], O_RDONLY);
 		if(fd == -1) {
-			e = esys("failed to open input file");
-			goto out;
+			keyfree(&recs);
+			die(esys("failed to open input file"));
 		}
 		ibinit(&ib, fd);
 	} else if(argc == 0) {
