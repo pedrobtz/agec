@@ -2,10 +2,10 @@
 #include "arg.h"
 #include "crypto.h"
 #include "base64.h"
+#include "io.h"
 #include "header.h"
 #include "scrypt.h"
 #include "x25519.h"
-#include "io.h"
 #include "parse.h"
 #include "payload.h"
 #include "util.h"
@@ -46,8 +46,7 @@ static int checkencrypted(Ibuf *ib, Ebuf *eb, const char **err);
 static const char *matchscrypt(Ibuf *ib, Stanza *s);
 static const char *readprivkeys(void *b, Keys *privs, int encrypted);
 static const char *getprivkeys(Keys *privs, const char *path);
-static const char *genhdr(Header *h, uchar filekey[16], int ispass, Keys *recs);
-static const char *writehdr(Obuf *out, Header *h);
+static const char *makehdr(Header *h, Obuf *out, uchar filekey[16], int ispass, Keys *recs);
 static const char *encipher(Ibuf *in, Obuf *out, int ispass, Keys *recs);
 static const char *validmac(Ibuf *in, uchar filekey[16], int *isvalid);
 static const char *validatemac(Ibuf *in, uchar filekey[16]);
@@ -385,12 +384,18 @@ matchscrypt(Ibuf *ib, Stanza *s)
 }
 
 static const char *
-genhdr(Header *h, uchar filekey[16], int ispass, Keys *recs)
+makehdr(Header *h, Obuf *out, uchar filekey[16], int ispass, Keys *recs)
 {
-	char mac[B64EBUFLEN(32) + 1];
+	char mac[1 + B64EBUFLEN(32) + 1];
 	const char *e;
 	usize maclen;
+	ssize nw;
 
+	if(out->isarmor) {
+		nw = writeall(out->fd, armorfirst, sizeof(armorfirst) - 1);
+		if(nw == -1)
+			return eget();
+	}
 	e = hdrappend(h, "age-encryption.org/v1\n");
 	if(e)
 		return e;
@@ -400,25 +405,10 @@ genhdr(Header *h, uchar filekey[16], int ispass, Keys *recs)
 	e = hdrappend(h, "---");
 	if(e)
 		return e;
-	hdrmac(h->data, h->len, filekey, mac, &maclen);
-	mac[sizeof(mac) - 1] = '\0';
-	e = hdrappend(h, " %s\n", mac);
-	if(e)
-		return e;
-	return NULL;
-}
-
-static const char *
-writehdr(Obuf *out, Header *h)
-{
-	ssize nw;
-
-	if(out->isarmor) {
-		nw = writeall(out->fd, armorfirst, sizeof(armorfirst) - 1);
-		if(nw == -1)
-			return eget();
-	}
-	nw = bwrite(out, h->data, h->len);
+	mac[0] = ' ';
+	hdrfinish(h, mac + 1, &maclen);
+	mac[1 + maclen] = '\n';
+	nw = bwrite(out, mac, 1 + maclen + 1);
 	if(nw == -1)
 		return eget();
 	return NULL;
@@ -452,17 +442,10 @@ encipher(Ibuf *in, Obuf *out, int ispass, Keys *recs)
 	e = mkfilekey(filekey);
 	if(e)
 		return e;
-	e = hdrinit(&h);
-	if(e)
-		return ewrap("failed to generate header", e);
-	e = genhdr(&h, filekey, ispass, recs);
+	hdrinit(&h, filekey, out);
+	e = makehdr(&h, out, filekey, ispass, recs);
 	if(e) {
 		e = ewrap("failed to generate header", e);
-		goto out;
-	}
-	e = writehdr(out, &h);
-	if(e) {
-		e = ewrap("failed to encrypt", e);
 		goto out;
 	}
 	e = writebody(out, in, filekey);
@@ -470,7 +453,7 @@ encipher(Ibuf *in, Obuf *out, int ispass, Keys *recs)
 		e = ewrap("failed to encrypt", e);
 out:
 	wipe(filekey, sizeof(filekey));
-	free(h.data);
+	wipe(&h, sizeof(h));
 	return e;
 }
 

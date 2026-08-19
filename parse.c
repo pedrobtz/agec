@@ -1,9 +1,10 @@
 #include "common.h"
 #include "base64.h"
+#include "crypto.h"
+#include "io.h"
 #include "header.h"
 #include "scrypt.h"
 #include "x25519.h"
-#include "io.h"
 #include "parse.h"
 #include "util.h"
 
