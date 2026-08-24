@@ -26,25 +26,17 @@ bwrite(Obuf *b, void *buf, usize nbytes)
 
 	if(b->isarmor)
 		return awrite(b, buf, nbytes);
-	if(nbytes > IOBUFSIZE) {
-		ret = bflush(b);
-		if(ret == -1)
-			return -1;
-		return writeall(b->fd, buf, nbytes);
-	}
 	rest = IOBUFSIZE - b->cur;
 	c = (rest > nbytes) ? nbytes : rest;
 	memcpy(b->buf.buf + b->cur, buf, c);
+	b->cur += c;
 	if(rest > nbytes) {
-		b->cur += nbytes;
 		return 0;
 	} else {
-		ret = writeall(b->fd, b->buf.buf, b->cur);
+		ret = bflush(b);
 		if(ret == -1)
 			return -1;
-		memcpy(b->buf.buf, (uchar *)buf + rest, nbytes - rest);
-		b->cur = nbytes - rest;
-		return ret;
+		return writeall(b->fd, buf + c, nbytes - c);
 	}
 }
 
