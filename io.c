@@ -174,15 +174,13 @@ bread(Ibuf *b, void *buf, usize nbytes)
 		if(b->isarmor == -1)
 			return -1;
 	}
-	if(b->eof && b->cur == b->size)
-		return 0;
 	while(nbytes > 0) {
 		if(b->cur == b->size) {
 			if(b->recording && b->size > 0)
 				recappend(b, b->buf, b->size);
 			b->cur = b->size = 0;
 		}
-		if(b->size == 0) {
+		if(b->size == 0 && !b->eof) {
 			if(b->isarmor)
 				nr = aread(b, b->buf, IOBUFSIZE);
 			else
@@ -200,6 +198,8 @@ bread(Ibuf *b, void *buf, usize nbytes)
 			b->size = nr;
 		}
 		rest = b->size - b->cur;
+		if(rest == 0 && b->eof)
+			break;
 		c = (rest > nbytes) ? nbytes : rest;
 		memcpy(buf, b->buf + b->cur, c);
 		buf = (uchar *)buf + c;
