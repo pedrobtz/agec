@@ -97,7 +97,10 @@ static const char *
 skipargbody(Ibuf *b)
 {
 	static const char *einval = "invalid stanza body";
-	int linelen;
+	uchar line[64];
+	uchar dbuf[B64EBUFLEN(64)];
+	int linelen, ok;
+	usize olen;
 	ssize nr;
 	char c;
 
@@ -111,13 +114,17 @@ skipargbody(Ibuf *b)
 		if(c == '\n') {
 			if(linelen > 64)
 				return einval;
-			else if(linelen < 64)
+			ok = base64decode(line, dbuf, linelen, &olen, 0);
+			if(!ok)
+				return einval;
+			if(linelen < 64)
 				return NULL;
 			linelen = 0;
 			continue;
 		}
+		line[linelen] = c;
 		linelen++;
-		if(linelen > 64 || !b64char(c))
+		if(linelen > 64)
 			return einval;
 	}
 }
