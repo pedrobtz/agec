@@ -47,6 +47,9 @@ check-usage: agec
 check-vectors: agec
 	cd test/vectors && ./testall.sh
 
+check-io: agec agecgen
+	cd test && ./io.sh
+
 check-afl:
 	cd test/afl && afl-fuzz -i cases/ -o found/ -- ../../agec -d -i priv
 
