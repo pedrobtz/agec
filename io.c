@@ -36,7 +36,7 @@ bwrite(Obuf *b, void *buf, usize nbytes)
 		ret = bflush(b);
 		if(ret == -1)
 			return -1;
-		return writeall(b->fd, buf + c, nbytes - c);
+		return writeall(b->fd, (uchar *)buf + c, nbytes - c);
 	}
 }
 
