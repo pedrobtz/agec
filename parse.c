@@ -122,10 +122,10 @@ skipargbody(Ibuf *b)
 			linelen = 0;
 			continue;
 		}
+		if(linelen == 64)
+			return einval;
 		line[linelen] = c;
 		linelen++;
-		if(linelen > 64)
-			return einval;
 	}
 }
 
