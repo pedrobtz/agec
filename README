@@ -55,13 +55,10 @@ agec aims to be compliant with v1 specification[3] (also available
 at doc/age.5). The tool passes all test vectors[4] except for some
 in test/vectors/dec-wontfix directory.
 
-The tool diverges from these cases in the following ways:
-
-1. agec is strict about decoding ASCII armored input: it accepts
-   only LF as a line ending, disallows whitespace before and after
-   the PEM block and enforces LF at the end of the last line.
-
-2. agec does not validate base64 encoding of unrecognized stanzas.
+The tool diverges from these cases being stricter about decoding
+ASCII armored input: it accepts only LF as a line ending, disallows
+whitespace before and after the PEM block and enforces LF at the end
+of the last line.
 
 These cases seems not to be directly required by the specification.
 

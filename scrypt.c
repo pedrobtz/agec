@@ -1,6 +1,7 @@
 #include "common.h"
 #include "crypto.h"
 #include "base64.h"
+#include "io.h"
 #include "header.h"
 #include "keyenc.h"
 #include "scrypt.h"
