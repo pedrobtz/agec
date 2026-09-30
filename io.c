@@ -8,6 +8,8 @@
 
 const char armorfirst[36] = "-----BEGIN AGE ENCRYPTED FILE-----\n";
 const char armorlast[34]  = "-----END AGE ENCRYPTED FILE-----\n";
+/* compile-time check: the armor probe must fit in one read buffer */
+typedef char armorfirst_fits_iobuf[(sizeof(armorfirst) - 1 < IOBUFSIZE) ? 1 : -1];
 
 static ssize awrite(Obuf *b, void *buf, usize nbytes);
 static ssize aflush(Obuf *b);
@@ -116,7 +118,6 @@ isarmor(Ibuf *b)
 {
 	ssize nr;
 
-	assert(sizeof(armorfirst) - 1 < IOBUFSIZE);
 	nr = readall(b->fd, b->buf, sizeof(armorfirst) - 1, &b->eof);
 	if(nr == -1)
 		return -1;
