@@ -65,7 +65,7 @@ if test -n "$identity"; then
 		fi
 		exit 0
 	fi
-	"$reftool" -i priv -d <out >/dev/null
+	"$reftool" -i priv -d <out >decbody
 	if test $? != 0; then
 		echo >&2 $0: reference implementation failed to decrypt
 		exit 1
@@ -90,11 +90,16 @@ else
 		fi
 		exit 0
 	fi
-	"$reftool" -d <out >/dev/null
+	"$reftool" -d <out >decbody
 	if test $? != 0; then
 		echo >&2 $0: reference implementation failed to decrypt
 		exit 1
 	fi
+fi
+
+if ! cmp -s body decbody; then
+	echo >&2 $0: test failed: payload differs
+	exit 1
 fi
 
 exit 0

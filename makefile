@@ -11,7 +11,8 @@ OBJS = $(OBJ_AGEC) $(OBJ_AGECGEN)
 TESTS = test/unit/base64.o test/unit/bech32.o test/unit/util.o
 OBJ_TEST = base64.o bech32.o util.o $(OS)/util.o
 TESTTMP = test/unit/main test/unit/main.o test/unit/*.c \
-	test/vectors/body test/vectors/out test/vectors/priv
+	test/vectors/body test/vectors/decbody test/vectors/out \
+	test/vectors/priv
 PREFIX = /usr/local
 BINDIR = $(PREFIX)/bin
 MANDIR = $(PREFIX)/share/man
@@ -45,6 +46,9 @@ check-usage: agec
 
 check-vectors: agec
 	cd test/vectors && ./testall.sh
+
+check-io: agec agecgen
+	cd test && ./io.sh
 
 check-afl:
 	cd test/afl && afl-fuzz -i cases/ -o found/ -- ../../agec -d -i priv
