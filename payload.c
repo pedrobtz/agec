@@ -75,14 +75,12 @@ incnonce(uchar nonce[12])
 {
 	int i;
 
-	for(i = 10; i > 0; i--) {
+	for(i = 10; i >= 0; i--) {
 		nonce[i]++;
 		if(nonce[i] != 0)
-			break;
-		if(i == 0)
-			return "payload is too long; chunk counter wrapped";
+			return NULL;
 	}
-	return NULL;
+	return "payload is too long; chunk counter wrapped";
 }
 
 static usize
